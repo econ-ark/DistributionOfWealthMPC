@@ -1,0 +1,26 @@
+Estimate is center=0.9902062496665112, spread=0.0
+Lorenz distance is 39.55833893836487
+Average MPC for all consumers is 0.091
+Average MPC in the top percentile of W/Y is 0.074
+Average MPC in the top decile of W/Y is 0.074
+Average MPC in the top quintile of W/Y is 0.074
+Average MPC in the second quintile of W/Y is 0.074
+Average MPC in the middle quintile of W/Y is 0.074
+Average MPC in the fourth quintile of W/Y is 0.074
+Average MPC in the bottom quintile of W/Y is 0.159
+Average MPC in the top percentile of y is 0.074
+Average MPC in the top decile of y is 0.074
+Average MPC in the top quintile of y is 0.078
+Average MPC in the second quintile of y is 0.105
+Average MPC in the middle quintile of y is 0.105
+Average MPC in the fourth quintile of y is 0.078
+Average MPC in the bottom quintile of y is 0.087
+Average MPC for the employed is 0.089
+Average MPC for the unemployed is 0.113
+Average MPC for the retired is nan
+Of the population with the 1/3 highest MPCs...
+82.777% are in the bottom wealth quintile,
+15.869% are in the second wealth quintile,
+1.174% are in the third wealth quintile,
+0.157% are in the fourth wealth quintile,
+and 0.023% are in the top wealth quintile.
