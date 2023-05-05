@@ -3,11 +3,11 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - python=3.9
+  - python=3.10
   - matplotlib>=3.7.0
   - ipython>=8.8.0
   - econ-ark
   - pip
   - pip:
-      - git+https://github.com/alanlujan91/HARK@market_bug
+      - git+https://github.com/econ-ark/HARK
 prefix: ./env

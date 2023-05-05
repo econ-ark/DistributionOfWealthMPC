@@ -12,6 +12,8 @@ from HARK.ConsumptionSaving.ConsIndShockModel import IndShockConsumerType
 from HARK.distribution import DiscreteDistribution, Lognormal, Uniform
 from HARK.utilities import calc_subpop_avg, get_lorenz_shares, get_percentiles
 
+from IPython.core.getipython import get_ipython
+
 here = os.path.dirname(os.path.realpath(__file__))
 
 

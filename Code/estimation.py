@@ -35,6 +35,8 @@ All of these parameters are set when running this file from one of the do_XXX.py
 files in the root directory.
 """
 
+from code.agents import AggDoWAgent, AggDoWMarket, DoWAgent, DoWMarket
+from code.calibration import init_infinite
 from copy import copy, deepcopy
 from time import time
 
@@ -42,11 +44,9 @@ import numpy as np
 from HARK.utilities import get_lorenz_shares
 from scipy.optimize import minimize, minimize_scalar, root_scalar
 
-from code.agents import AggDoWAgent, AggDoWMarket, DoWAgent, DoWMarket
-
 
 def get_ky_ratio_difference(
-    center, economy, param_name, param_count, spread, dist_type
+    center, spread, economy, param_name, param_count, dist_type
 ):
     """
     Finds the difference between simulated and target capital to income ratio in an economy when
@@ -54,16 +54,16 @@ def get_ky_ratio_difference(
 
     Parameters
     ----------
+    center : float
+        A measure of centrality for the distribution of the parameter of interest.
+    spread : float
+        A measure of spread or diffusion for the distribution of the parameter of interest.
     economy : CstwMPCMarket
         An object representing the entire economy, containing the various AgentTypes as an attribute.
     param_name : string
         The name of the parameter of interest that varies across the population.
     param_count : int
         The number of different values the parameter of interest will take on.
-    center : float
-        A measure of centrality for the distribution of the parameter of interest.
-    spread : float
-        A measure of spread or diffusion for the distribution of the parameter of interest.
     dist_type : string
         The type of distribution to be used.  Can be "lognormal" or "uniform" (can expand).
 
@@ -83,7 +83,7 @@ def get_ky_ratio_difference(
 
 
 def find_lorenz_distance_at_target_ky(
-    spread, economy, param_name, param_count, center_range, dist_type
+    spread, economy, param_name, param_count, param_range, dist_type
 ):
     """
     Finds the sum of squared distances between simulated and target Lorenz points in an economy when
@@ -99,7 +99,7 @@ def find_lorenz_distance_at_target_ky(
         The name of the parameter of interest that varies across the population.
     param_count : int
         The number of different values the parameter of interest will take on.
-    center_range : [float,float]
+    param_range : [float,float]
         Bounding values for a measure of centrality for the distribution of the parameter of interest.
     spread : float
         A measure of spread or diffusion for the distribution of the parameter of interest.
@@ -115,11 +115,12 @@ def find_lorenz_distance_at_target_ky(
 
     # use more sophisticated discrete distribution with zero mass point at ends of support
     # root finding
+
     optimal_center = root_scalar(
         get_ky_ratio_difference,
-        args=(economy, param_name, param_count, spread, dist_type),
+        args=(spread, economy, param_name, param_count, dist_type),
         method="toms748",
-        bracket=center_range,
+        bracket=param_range,
         xtol=10 ** (-6),
     ).root
     economy.center_save = optimal_center
@@ -208,6 +209,8 @@ def get_spec_name(options):
         param_text = "beta"
     elif options["param_name"] == "CRRA":
         param_text = "rho"
+    elif options["param_name"] == "Rfree":
+        param_text = "rrate"
     else:
         param_text = options["param_name"]
 
@@ -401,8 +404,14 @@ def estimate(options, params):
             param_range = [0.2, 70.0]
             spread_range = [0.00001, 1.0]
         elif options["param_name"] == "DiscFac":
-            param_range = [0.95, 0.995]
-            spread_range = [0.006, 0.008]
+            param_range = [0.95, 0.995]  # search space for center_estimate
+            spread_range = [0.006, 0.008]  # search space for spread_estimate
+            init_guess = [0.9867, 0.0067]
+        elif options["param_name"] == "Rfree":
+            Rfree = init_infinite["Rfree"]
+            param_range = [Rfree - 0.01, Rfree + 0.1]
+            spread_range = [0.01, 0.1]
+            init_guess = [1.034, 0.01] # for combo
         else:
             print(f"Parameter range for {options['param_name']} has not been defined!")
 
@@ -414,7 +423,7 @@ def estimate(options, params):
 
                 results = minimize(
                     get_target_ky_and_find_lorenz_distance,
-                    [0.9867, 0.0067],
+                    init_guess,
                     args=(
                         economy,
                         options["param_name"],
@@ -454,10 +463,10 @@ def estimate(options, params):
             center_estimate = root_scalar(
                 get_ky_ratio_difference,
                 args=(
+                    0.0,
                     economy,
                     options["param_name"],
                     param_count,
-                    0.0,
                     options["dist_type"],
                 ),
                 method="toms748",
