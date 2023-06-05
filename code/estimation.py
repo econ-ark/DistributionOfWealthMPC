@@ -411,7 +411,7 @@ def estimate(options, params):
             Rfree = init_infinite["Rfree"]
             param_range = [Rfree - 0.01, Rfree + 0.1]
             spread_range = [0.01, 0.1]
-            init_guess = [1.034, 0.01] # for combo
+            init_guess = [1.034, 0.01]  # for combo
         else:
             print(f"Parameter range for {options['param_name']} has not been defined!")
 
