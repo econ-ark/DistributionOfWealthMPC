@@ -3,11 +3,20 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - python=3.10
+  - python=3.9
   - matplotlib>=3.7.0
   - ipython>=8.8.0
-  - econ-ark
+  - black
+  - ruff
+  - jupyter
+  - jupyterlab
+  - jupytext
+  - xarray
+  - scipy
+  - numpy
+  - numba
+  - pandas
   - pip
   - pip:
-      - git+https://github.com/econ-ark/HARK
-prefix: ./env
+      - git+https://github.com/econ-ark/HARK@master
+      - black[jupyter]

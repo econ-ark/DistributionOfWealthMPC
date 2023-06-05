@@ -250,8 +250,7 @@ with heterogeneity, no aggregate shocks, perpetual youth model, matching net wor
 do_param_dist = True  # Do param-dist version if True, param-point if False
 do_lifecycle = False  # Use lifecycle model if True, perpetual youth if False
 do_agg_shocks = False  # Solve the FBS aggregate shocks version of the model
-# Matches liquid assets data when True, net worth data when False
-do_liquid = True
+do_liquid = True  # Matches liquid assets data when True, net worth data when False
 do_tractable = False  #
 
 
@@ -281,7 +280,7 @@ SCF_Lorenz_points = get_lorenz_shares(
     SCF_wealth, weights=SCF_weights, percentiles=pctiles
 )
 
-sim_wealth = EstimationEconomy.reap_state["aLvl"][0]
+sim_wealth = np.asarray(EstimationEconomy.reap_state["aLvl"]).flatten()
 sim_Lorenz_points = get_lorenz_shares(sim_wealth, percentiles=pctiles)
 
 # %%
@@ -297,5 +296,7 @@ plt.legend(loc=2)
 plt.ylim([0, 1])
 plt.show("wealth_distribution_2")
 
+# %%
+np.asarray(EstimationEconomy.reap_state["aLvl"]).shape
 
 # %%
