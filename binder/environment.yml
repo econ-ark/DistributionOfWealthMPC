@@ -3,5 +3,6 @@ channels:
   - conda-forge
 dependencies:
   - python=3.9
+  - ipython>=8.8.0
   - pip:
       - git+https://github.com/econ-ark/HARK@master
