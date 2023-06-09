@@ -1,27 +1,33 @@
-cff-version: 1.1.0
-message: If you use this software, please cite it as below.
+cff-version: 1.2.0
+message: The results of this paper are now generated in an updated repository using a more modern version of HARK, https://github.com/econ-ark/DistributionOfWealthMPC. Any followup work should build on the updated code in that repository. # optional
 authors:
-  - family-names: Benthall
-    given-names: Sebastian
-    orcid: https://orcid.org/0000-0002-1789-5109
-  - family-names: Carroll
-    given-names: Christopher
+  - family-names: "Carroll"
+    given-names: "Christopher D."
+    orcid: "https://orcid.org/0000-0003-3732-9312"
+  - family-names: "Slacalek"
+    given-names: "Jiri"
+  - family-names: "Kiichi"
+    given-names: "Tokuoka"
+  - family-names: "White"
+    given-names: "Matthew"
+title: "The distribution of wealth and the marginal propensity to consume"
+
 references:
   - type: article
     authors:
-      - family-names: Carroll
-        given-names: Christopher
-      - family-names: Slacalek
-        given-names: Jiri
-      - family-names: Tokuoka
-        given-names: Kiichi
-      - family-names: White
-        given-names: Matthew
-    title : "The distribution of wealth and the marginal propensity to consume"
-    journal: Quantitative Economics
-    year: 2017
-    doi: https://doi.org/10.3982/QE694
-title: "The distribution of wealth and marginal propensity to consume REMARK"
-version: 1.0
-#doi: 
-date-released: 2021-xx-xx
+      - family-names: "Carroll"
+        given-names: "Christopher D."
+        orcid: "https://orcid.org/0000-0003-3732-9312"
+      - family-names: "Slacalek"
+        given-names: "Jiri"
+      - family-names: "Kiichi"
+        given-names: "Tokuoka"
+      - family-names: "White"
+        given-names: "Matthew N."
+    title: "The distribution of wealth and the marginal propensity to consume" # required
+    doi: "10.3982/QE694"
+    date-released: 2017-11-20
+    publisher:
+        name: Quantitative Economics
+
+repository-code: https://github.com/econ-ark/DistributionOfWealthMPC
