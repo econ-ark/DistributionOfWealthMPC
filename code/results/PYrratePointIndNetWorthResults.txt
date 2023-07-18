@@ -1,5 +1,5 @@
-Estimate is center=1.0378652041604959, spread=0.0
-Lorenz distance is 39.82172502226316
+Estimate is center=1.037865204159259, spread=0.0
+Lorenz distance is 39.8217250255979
 Average MPC for all consumers is 0.168
 Average MPC in the top percentile of W/Y is 0.137
 Average MPC in the top decile of W/Y is 0.139
