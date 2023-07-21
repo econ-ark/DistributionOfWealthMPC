@@ -199,6 +199,9 @@ SCF_Lorenz_points = get_lorenz_shares(
 sim_wealth = EstimationEconomy.reap_state["aLvl"][0]
 sim_Lorenz_points = get_lorenz_shares(sim_wealth, percentiles=pctiles)
 
+print(sim_wealth)
+print(EstimationEconomy.reap_state["aLvl"])
+
 # Plot
 plt.figure(figsize=(5, 5))
 plt.title("Wealth Distribution")
@@ -211,8 +214,6 @@ plt.legend(loc=2)
 plt.ylim([0, 1])
 plt.show("wealth_distribution_1")
 
-
-# %%
 
 # %% [markdown]
 # ## Return Preference Heterogeneneity
@@ -272,14 +273,20 @@ SCF_Lorenz_points = get_lorenz_shares(
 )
 
 sim_wealth = np.asarray(EstimationEconomy.reap_state["aLvl"]).flatten()
-sim_Lorenz_points = get_lorenz_shares(sim_wealth, percentiles=pctiles)
+sim_wealth_2 = np.concatenate(EstimationEconomy.reap_state["aLvl"])
+sim_Lorenz_points_2 = get_lorenz_shares(sim_wealth_2, percentiles=pctiles)
+print(sim_wealth)
+print(EstimationEconomy.reap_state["aLvl"])
+print(np.concatenate(EstimationEconomy.reap_state["aLvl"]))
+
+
 
 # %%
 # Plot
 plt.figure(figsize=(5, 5))
 plt.title("Wealth Distribution")
 plt.plot(pctiles, SCF_Lorenz_points, "--k", label="SCF")
-plt.plot(pctiles, sim_Lorenz_points, "-b", label="R-Dist")
+plt.plot(pctiles, sim_Lorenz_points_2, "-b", label="R-Dist")
 plt.plot(pctiles, pctiles, "g-.", label="45 Degree")
 plt.xlabel("Percentile of net worth")
 plt.ylabel("Cumulative share of wealth")
@@ -342,6 +349,7 @@ plt.legend(loc=2)
 plt.ylim([0, 1])
 plt.show("wealth_distribution_3")
 
+
 # %% [markdown]
 # ### $\Rfree$-dist model
 
@@ -372,10 +380,21 @@ EstimationEconomy = estimate(options, parameters)
 
 # %%
 # Plot
+pctiles = np.linspace(0.001, 0.999, 15)
+SCF_Lorenz_points = get_lorenz_shares(
+    SCF_wealth, weights=SCF_weights, percentiles=pctiles
+)
+
+#sim_wealth = np.asarray(EstimationEconomy.reap_state["aLvl"]).flatten()
+sim_wealth_4 = np.concatenate(EstimationEconomy.reap_state["aLvl"])
+print(np.asarray(EstimationEconomy.reap_state["aLvl"]).shape)
+print(sim_wealth_4.shape)
+sim_Lorenz_points_4 = get_lorenz_shares(sim_wealth_4, percentiles=pctiles)
+
 plt.figure(figsize=(5, 5))
 plt.title("Wealth Distribution")
 plt.plot(pctiles, SCF_Lorenz_points, "--k", label="SCF")
-plt.plot(pctiles, sim_Lorenz_points, "-b", label="R-Dist-LC")
+plt.plot(pctiles, sim_Lorenz_points_4, "-b", label="R-Dist-LC")
 plt.plot(pctiles, pctiles, "g-.", label="45 Degree")
 plt.xlabel("Percentile of net worth")
 plt.ylabel("Cumulative share of wealth")
@@ -408,3 +427,41 @@ plt.hist(est_Rfree_dstn,bins=num_types)
 plt.show()
 
 # %%
+Rfree_LC_mean = 1.0063522012578616  # center of Rfree distribution
+Rfree_LC_spread = 0.01097174439675312  # spread of Rfree distribution
+
+est_Rfree_LC_dstn = (
+    Uniform(Rfree_LC_mean - Rfree_LC_spread, Rfree_LC_mean + Rfree_LC_spread)
+    .discretize(num_types)
+    .atoms.flatten()
+)
+
+print(est_Rfree_LC_dstn)
+ax = plt.gca()
+ax.set_ylim([0, 2])
+plt.hist(est_Rfree_LC_dstn,bins=num_types)
+plt.show()
+
+# %% [markdown]
+# ### Graph of the empirical distribution of safe and risky returns from Fagereng et al. (2015)
+#
+# ![Image Description](/Users/dc/Library/CloudStorage/OneDrive-JohnsHopkins/research/GitHub-forks/econ-ark/DistributionOfWealthMPC/DistEmpReturnsFagereng.png)
+#
+#
+
+# %% [markdown]
+# ### Possible distributional assumptions for the rate of return
+#
+# * Pareto
+# * Weibull
+# * Beta
+#
+#     * Lognormal
+#     * Exponential
+#
+# Note, so far, only the Pareto distribution has been cited as a possible candidate of the distribution of returns.
+#
+# Although a typical assumption is that returns are lognormally distributed, based on the data from Fagereng et al., a negative skewness suggests that the lognormal distribution may not be the correct asssumption (much like the uniform distribution may not be correct due to it exhibiting a skewnesss value of 0). Lastly, although exponential distirbution seemed like a possible candidate due to its shape when comparing it to a graph of the data on the rate of return to safe assets from Fagereng et al., has constant, positive values of skewness and kurtosis. 
+
+# %% [markdown]
+#
