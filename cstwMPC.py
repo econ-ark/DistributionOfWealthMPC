@@ -212,6 +212,12 @@ plt.ylim([0, 1])
 plt.show("wealth_distribution_1")
 
 
+# %%
+print(sim_wealth.shape)
+
+# %%
+print(EstimationEconomy.agents)
+
 # %% [markdown]
 # ## Time Preference Heterogeneneity
 #
@@ -250,7 +256,7 @@ with heterogeneity, no aggregate shocks, perpetual youth model, matching net wor
 do_param_dist = True  # Do param-dist version if True, param-point if False
 do_lifecycle = False  # Use lifecycle model if True, perpetual youth if False
 do_agg_shocks = False  # Solve the FBS aggregate shocks version of the model
-do_liquid = True  # Matches liquid assets data when True, net worth data when False
+do_liquid = False  # Matches liquid assets data when True, net worth data when False
 do_tractable = False  #
 
 
@@ -298,5 +304,8 @@ plt.show("wealth_distribution_2")
 
 # %%
 np.asarray(EstimationEconomy.reap_state["aLvl"]).shape
+
+# %%
+print(sim_wealth.shape)
 
 # %%
