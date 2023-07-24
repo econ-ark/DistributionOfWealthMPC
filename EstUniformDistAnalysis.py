@@ -16,13 +16,12 @@ class EstUniformDist:
         self.num_types = num_types
         self.results = results if results is not None else ""
 
-        self.center_value, self.spread_value = self.find_values()
+        self.center_value, self.spread_value = self.parse_line()
 
         self.bottom = self.center_value - self.spread_value
         self.top = self.center_value + self.spread_value
 
-        
-    def find_values(self):
+    def parse_line(self):
         """
         Function which takes a text file containing the output of a standard structural estimation
         exercise using the HARK toolkit (specifically, the DistributionOfWealthMPC repository)
@@ -31,27 +30,23 @@ class EstUniformDist:
         Note: This is specific to the assumption of a uniform distribution of 
         the specified preference parameter being estimated.
         """
-        try:
-            with open(self.results, 'r') as file:
-                first_line = file.readline()
-
-                center_match = re.search(r'center=([0-9]+),', first_line)
-                spread_match = re.search(r'spread=([0-9]+)', first_line)
-
-                if center_match:
-                    center_value = center_match.group(1)
-                else:
-                    center_value = "center= not found."
-
-                if spread_match:
-                    spread_value = spread_match.group(1)
-                else:
-                    spread_value = "spread= not found."
-
-                return center_value, spread_value
-
-        except FileNotFoundError:
-            return "File not found."
+        with open(self.results, 'r') as file:
+            line = file.readline()
+            center_index = line.find("center=")
+            spread_index = line.find("spread=")
+        
+            if center_index == -1 or spread_index == -1:
+                return None
+        
+            center_start = center_index + len("center=")
+            comma_index = line.find(",", center_start)
+        
+            spread_start = spread_index + len("spread=")
+        
+            result_center = line[center_start:comma_index]
+            result_spread = line[spread_start:].strip()
+        
+            return float(result_center), float(result_spread)
         
 
     def graph(self):
