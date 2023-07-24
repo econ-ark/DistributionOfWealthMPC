@@ -234,7 +234,14 @@ def get_spec_name(options):
     else:
         shock_text = "Ind"
 
-    spec_name = life_text + param_text + model_text + shock_text + wealth_text
+    if options["dist_type"] == "uniform":
+        dist_text = "Unif"
+    elif options["dist_type"] == "lognormal":
+        dist_text = "Lognrm"
+    else:
+        raise ValueError("Distribution for parameter must be specified.")
+
+    spec_name = life_text + dist_text + param_text + model_text + shock_text + wealth_text
 
     return spec_name
 
