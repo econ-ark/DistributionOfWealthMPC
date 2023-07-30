@@ -14,7 +14,8 @@ from estimation import (
 from HARK.utilities import get_lorenz_shares
 from scipy.optimize import minimize, minimize_scalar, root_scalar
 
-
+# Don't forget to store the value of R_upper as an attribute
+# of the economy, so it can be called later.
 def get_R_upper(economy, param_name, param_count, dist_type):
     pass
 
@@ -84,6 +85,88 @@ def estimate_r_lower(options, params):
         economy.distribute_params(
             options["param_name"],
             param_count,
+            center_estimate,
+            spread_estimate,
+            options["dist_type"],
+        )
+        economy.solve()
+        economy.calc_lorenz_distance()
+        print(
+            f"Estimate is center={center_estimate}, spread={spread_estimate}, "
+            f"took {t_end - t_start} seconds."
+        )
+
+        economy.optimal_r_lower = r_lower_estimate
+        economy.center_estimate = center_estimate
+        economy.spread_estimate = spread_estimate
+        economy.show_many_stats(spec_name)
+        print(
+            f"These results have been saved to ./code/results/dist_bounds/{spec_name}.txt\n\n"
+        )
+
+         # Store these as attributes for later use
+        economy.spec_name = spec_name
+        economy.param_count = param_count
+        economy.R_upper = R_upper
+        economy.epsilon = epsilon
+
+    return economy
+
+def get_target_ky_and_find_lorenz_distance_given_R_lower(
+    r_lower, r_upper, economy, param_name, param_count, dist_type
+):
+    x = get_center_spread(r_lower, r_upper)
+
+    return get_target_ky_and_find_lorenz_distance(
+        x, economy, param_name, param_count, dist_type
+    )
+
+
+def estimate_r_upper_given_r_lower(options, params):
+    economy = estimate_r_lower(options, params)
+    R_lower = economy.optimal_r_lower
+
+    # Estimate the model as requested
+    if options["run_estimation"]:
+        print(f"Beginning an estimation with the specification name {spec_name}...")
+
+        # Choose the bounding region for the parameter search
+        # Not sure if this is correct, but it seems like this part
+        # Should incorporate the lower bound found in the previous estimation.
+        if options["param_name"] == "Rfree":
+            spread_range = [R_lower, economy.R_upper - economy.epsilon]
+        else:
+            print(f"Parameter range for {options['param_name']} has not been defined!")
+
+        if options["do_param_dist"]:
+            # Run the param-dist estimation
+
+            t_start = time()
+            r_upper_estimate = (
+                minimize_scalar(
+                    get_target_ky_and_find_lorenz_distance_given_R_lower,
+                    bounds=spread_range,
+                    args=(
+                        R_lower,
+                        economy,
+                        options["param_name"],
+                        economy.param_count,
+                        options["dist_type"],
+                    ),
+                    tol=1e-4,
+                )
+            ).x
+
+            t_end = time()
+
+        # Display statistics about the estimated model
+        economy.assign_parameters(LorenzBool=True, ManyStatsBool=True)
+
+        center_estimate, spread_estimate = get_center_spread(R_lower, r_upper_estimate)
+
+        economy.distribute_params(
+            options["param_name"],
+            economy.param_count,
             center_estimate,
             spread_estimate,
             options["dist_type"],
