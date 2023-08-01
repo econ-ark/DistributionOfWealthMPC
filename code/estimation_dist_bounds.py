@@ -1,24 +1,28 @@
-from code.agents import AggDoWAgent, AggDoWMarket, DoWAgent, DoWMarket
-from code.calibration import init_infinite
-from copy import copy, deepcopy
 from time import time
 
-import numpy as np
-from estimation import (
-    get_ky_ratio_difference,
+from code.estimation import (
     get_param_count,
     get_spec_name,
     get_target_ky_and_find_lorenz_distance,
     set_up_economy,
 )
-from HARK.utilities import get_lorenz_shares
-from scipy.optimize import minimize, minimize_scalar, root_scalar
+from scipy.optimize import minimize_scalar
+from HARK.distribution import (
+    expected
+)
 
 # Don't forget to store the value of R_upper as an attribute
 # of the economy, so it can be called later.
-def get_R_cusp(economy, param_name, param_count, dist_type):
-    pass
+def get_R_cusp(economy,options):
 
+    economy.agents[0].Ex_PermShkInv = expected(lambda x: 1 / x, economy.agents[0].PermShkDstn[0])[0]
+
+    if options["do_lifecycle"]:
+        R_cusp_LC = ((economy.agents[0].PermGroFac[0] / (economy.agents[0].Ex_PermShkInv * economy.agents[0].LivPrb[0])) ** economy.agents[0].CRRA ) * (1/economy.agents[0].DiscFac)
+        return R_cusp_LC
+    else:
+        R_cusp_PY = ((economy.agents[0].PermGroFac[0] / economy.agents[0].Ex_PermShkInv) ** economy.agents[0].CRRA ) * (1/economy.agents[0].DiscFac)
+        return R_cusp_PY
 
 def get_center_spread(r_lower, r_upper):
     center = (r_lower + r_upper) / 2
@@ -42,7 +46,7 @@ def estimate_r_lower(options, params):
     param_count = get_param_count(options)
     economy = set_up_economy(options, params, param_count)
     R_cusp = get_R_cusp(
-        economy, options["param_name"], param_count, options["dist_type"]
+        economy, options
     )
     epsilon = 1e-8
 
@@ -117,7 +121,7 @@ def estimate_r_upper_given_r_lower(options, params):
 
     # Estimate the model as requested
     if options["run_estimation"]:
-        print(f"Beginning an estimation with the specification name {spec_name}...")
+        print(f"Beginning an estimation with the specification name {economy.spec_name}...")
 
         # Choose the bounding region for the parameter search
         # Not sure if this is correct, but it seems like this part
@@ -169,9 +173,9 @@ def estimate_r_upper_given_r_lower(options, params):
 
         economy.center_estimate = center_estimate
         economy.spread_estimate = spread_estimate
-        economy.show_many_stats(spec_name)
+        economy.show_many_stats(economy.spec_name)
         print(
-            f"These results have been saved to ./code/results/dist_bounds/{spec_name}.txt\n\n"
+            f"These results have been saved to ./code/results/dist_bounds/{economy.spec_name}.txt\n\n"
         )
 
     return economy
