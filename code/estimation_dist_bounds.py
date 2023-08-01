@@ -5,11 +5,13 @@ from code.estimation import (
     get_spec_name,
     get_target_ky_and_find_lorenz_distance,
     set_up_economy,
+    get_ky_ratio_difference
 )
-from scipy.optimize import minimize_scalar
+from scipy.optimize import minimize_scalar, root_scalar
 from HARK.distribution import (
     expected
 )
+
 
 # Don't forget to store the value of R_upper as an attribute
 # of the economy, so it can be called later.
@@ -57,6 +59,7 @@ def estimate_r_lower(options, params):
         # Choose the bounding region for the parameter search
         if options["param_name"] == "Rfree":
             spread_range = [0.0, R_cusp - epsilon]
+            param_range = [economy.agents[0].Rfree - 0.01, economy.agents[0].Rfree + 0.1]
         else:
             print(f"Parameter range for {options['param_name']} has not been defined!")
 
@@ -81,10 +84,30 @@ def estimate_r_lower(options, params):
 
             t_end = time()
 
+            center_estimate, spread_estimate = get_center_spread(r_lower_estimate, R_cusp - epsilon) #should this be (R_upper - epsilon)?
+
+        else:
+            # Run the param-point estimation only
+
+            t_start = time()
+            center_estimate = root_scalar(
+                get_ky_ratio_difference,
+                args=(
+                    0.0,
+                    economy,
+                    options["param_name"],
+                    param_count,
+                    options["dist_type"],
+                ),
+                method="toms748",
+                bracket=param_range,
+                xtol=1e-6,
+            ).root
+            spread_estimate = 0.0
+            t_end = time()
+
         # Display statistics about the estimated model
         economy.assign_parameters(LorenzBool=True, ManyStatsBool=True)
-
-        center_estimate, spread_estimate = get_center_spread(r_lower_estimate, R_cusp - epsilon) #should this be (R_upper - epsilon)?
 
         economy.distribute_params(
             options["param_name"],
@@ -100,7 +123,6 @@ def estimate_r_lower(options, params):
             f"took {t_end - t_start} seconds."
         )
 
-        economy.optimal_r_lower = r_lower_estimate
         economy.show_many_stats(spec_name)
         print(
             f"These results have been saved to ./code/results/dist_bounds/{spec_name}.txt\n\n"
@@ -152,10 +174,10 @@ def estimate_r_upper_given_r_lower(options, params):
 
             t_end = time()
 
+            center_estimate, spread_estimate = get_center_spread(R_lower, r_upper_estimate)
+
         # Display statistics about the estimated model
         economy.assign_parameters(LorenzBool=True, ManyStatsBool=True)
-
-        center_estimate, spread_estimate = get_center_spread(R_lower, r_upper_estimate)
 
         economy.distribute_params(
             options["param_name"],
