@@ -94,6 +94,8 @@ def estimate_r_lower(options, params):
 
             t_end = time()
 
+            economy.optimal_r_lower = r_lower_estimate
+            
             center_estimate, spread_estimate = get_center_spread(
                 r_lower_estimate, R_cusp - epsilon
             )  # should this be (R_upper - epsilon)?
@@ -117,6 +119,8 @@ def estimate_r_lower(options, params):
             ).root
             spread_estimate = 0.0
             t_end = time()
+
+            economy.optimal_r_lower = 0 # placeholder for the case where no spread is computed
 
         # Display statistics about the estimated model
         economy.assign_parameters(LorenzBool=True, ManyStatsBool=True)
@@ -153,7 +157,6 @@ def estimate_r_lower(options, params):
 
 def estimate_r_upper_given_r_lower(options, params):
     economy = estimate_r_lower(options, params)
-    R_lower = economy.optimal_r_lower
 
     # Estimate the model as requested
     if options["run_estimation"]:
@@ -165,7 +168,7 @@ def estimate_r_upper_given_r_lower(options, params):
         # Not sure if this is correct, but it seems like this part
         # Should incorporate the lower bound found in the previous estimation.
         if options["param_name"] == "Rfree":
-            spread_range = [R_lower, economy.R_cusp - economy.epsilon]
+            spread_range = [economy.optimal_r_lower, economy.R_cusp - economy.epsilon]
         else:
             print(f"Parameter range for {options['param_name']} has not been defined!")
 
@@ -178,7 +181,7 @@ def estimate_r_upper_given_r_lower(options, params):
                     get_target_ky_and_find_lorenz_distance_given_R_bounds,
                     bounds=spread_range,
                     args=(
-                        R_lower,
+                        economy.optimal_r_lower,
                         economy,
                         options["param_name"],
                         economy.param_count,
@@ -191,8 +194,14 @@ def estimate_r_upper_given_r_lower(options, params):
             t_end = time()
 
             center_estimate, spread_estimate = get_center_spread(
-                R_lower, r_upper_estimate
+                economy.optimal_r_lower, r_upper_estimate
             )
+
+        else:
+            t_start = time()
+            center_estimate = economy.center_estimate # when R-point is ran, use the center estimate computed from the call to "estimate_r_lower" instead of running it again
+            spread_estimate = economy.spread_estimate
+            t_end = time()
 
         # Display statistics about the estimated model
         economy.assign_parameters(LorenzBool=True, ManyStatsBool=True)
