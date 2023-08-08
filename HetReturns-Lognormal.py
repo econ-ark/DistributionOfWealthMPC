@@ -19,12 +19,6 @@
 # - All of the text can be edited and rewritten
 # - Add links/citations
 # - Check on the empirical targets, both in the CSTW paper/code/repo and recent measurements from the literature
-# - Find a way to produce graphical versions of the empirical results from the four papers on "measuring heterogeneity in the rate of return"
-# - Think more on other ways to compare the results of the notebook to the empirical results of the four papers
-#
-# - learn more about other possible distributional assumptions for the rate of return (with skewness and kurtosis) that are similar to the empirical data on the rate of return. See economics literature on distributional assumptions on the rate of return...
-#     - look for more papers that attempt to measure the rate of return to assets (consumer finance literature?)
-# - estimate the life-cycle version of the model (for the uniform and lognormal distribution as well... and potentially the distribution that I find in the literature)
 #
 
 # %% [markdown]
@@ -212,8 +206,6 @@ plt.ylim([0, 1])
 plt.show("wealth_distribution_1")
 
 
-# %%
-
 # %% [markdown]
 # ## Return Preference Heterogeneneity
 #
@@ -272,14 +264,20 @@ SCF_Lorenz_points = get_lorenz_shares(
 )
 
 sim_wealth = np.asarray(EstimationEconomy.reap_state["aLvl"]).flatten()
-sim_Lorenz_points = get_lorenz_shares(sim_wealth, percentiles=pctiles)
+sim_wealth_2 = np.concatenate(EstimationEconomy.reap_state["aLvl"])
+sim_Lorenz_points_2 = get_lorenz_shares(sim_wealth_2, percentiles=pctiles)
+print(sim_wealth)
+print(EstimationEconomy.reap_state["aLvl"])
+print(np.concatenate(EstimationEconomy.reap_state["aLvl"]))
+
+
 
 # %%
 # Plot
 plt.figure(figsize=(5, 5))
 plt.title("Wealth Distribution")
 plt.plot(pctiles, SCF_Lorenz_points, "--k", label="SCF")
-plt.plot(pctiles, sim_Lorenz_points, "-b", label="R-Dist")
+plt.plot(pctiles, sim_Lorenz_points_2, "-b", label="R-Dist")
 plt.plot(pctiles, pctiles, "g-.", label="45 Degree")
 plt.xlabel("Percentile of net worth")
 plt.ylabel("Cumulative share of wealth")
@@ -342,6 +340,7 @@ plt.legend(loc=2)
 plt.ylim([0, 1])
 plt.show("wealth_distribution_3")
 
+
 # %% [markdown]
 # ### $\Rfree$-dist model
 
@@ -372,10 +371,18 @@ EstimationEconomy = estimate(options, parameters)
 
 # %%
 # Plot
+pctiles = np.linspace(0.001, 0.999, 15)
+SCF_Lorenz_points = get_lorenz_shares(
+    SCF_wealth, weights=SCF_weights, percentiles=pctiles
+)
+
+sim_wealth_4 = np.concatenate(EstimationEconomy.reap_state["aLvl"])
+sim_Lorenz_points_4 = get_lorenz_shares(sim_wealth_4, percentiles=pctiles)
+
 plt.figure(figsize=(5, 5))
 plt.title("Wealth Distribution")
 plt.plot(pctiles, SCF_Lorenz_points, "--k", label="SCF")
-plt.plot(pctiles, sim_Lorenz_points, "-b", label="R-Dist-LC")
+plt.plot(pctiles, sim_Lorenz_points_4, "-b", label="R-Dist-LC")
 plt.plot(pctiles, pctiles, "g-.", label="45 Degree")
 plt.xlabel("Percentile of net worth")
 plt.ylabel("Cumulative share of wealth")
@@ -389,22 +396,35 @@ plt.show("wealth_distribution_4")
 # First, we present the graph of the estimated distribution of the rate of return across households which minimizes the Lorenz distance, given the empirical targets for wealth levels from the SCF data.
 
 # %%
-from HARK.distribution import Uniform
+import re
 
-num_types = 7  # number of types we want
-Rfree_mean = 1.0321840725453453  # center of Rfree distribution
-Rfree_spread = 0.013317421431722095  # spread of Rfree distribution
+from code.estimateduniformstats import EstUniformDist
 
-est_Rfree_dstn = (
-    Uniform(Rfree_mean - Rfree_spread, Rfree_mean + Rfree_spread)
-    .discretize(num_types)
-    .atoms.flatten()
-)
+PYUnif_RDist = EstUniformDist("/Users/dc/Library/CloudStorage/OneDrive-JohnsHopkins/research/GitHub-forks/econ-ark/DistributionOfWealthMPC/code/results/PYrrateDistIndNetWorthResults.txt")
 
-print(est_Rfree_dstn)
-ax = plt.gca()
-ax.set_ylim([0, 2])
-plt.hist(est_Rfree_dstn,bins=num_types)
-plt.show()
+print(PYUnif_RDist.top)
+print(PYUnif_RDist.bottom)
+
+PYUnif_RDist.graph()
+
+PYUnif_RDist.show_moments()
 
 # %%
+LCUnif_RDist = EstUniformDist("/Users/dc/Library/CloudStorage/OneDrive-JohnsHopkins/research/GitHub-forks/econ-ark/DistributionOfWealthMPC/code/results/LCrrateDistIndNetWorthResults.txt")
+
+print(LCUnif_RDist.top)
+print(LCUnif_RDist.bottom)
+
+LCUnif_RDist.graph()
+
+LCUnif_RDist.show_moments()
+
+# %% [markdown]
+# ### Graph of the empirical distribution of safe and risky returns from Fagereng et al. (2015)
+#
+# ![Image Description](/Users/dc/Library/CloudStorage/OneDrive-JohnsHopkins/research/GitHub-forks/econ-ark/DistributionOfWealthMPC/DistEmpReturnsFagereng.png)
+#
+#
+
+# %% [markdown]
+#
