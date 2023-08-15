@@ -1,26 +1,26 @@
-Estimate is center=0.730635182685901, spread=0.29687809399130544
-Lorenz distance is 4.164275595911819
-Average MPC for all consumers is 0.949
-Average MPC in the top percentile of W/Y is 0.591
-Average MPC in the top decile of W/Y is 0.729
-Average MPC in the top quintile of W/Y is 0.804
-Average MPC in the second quintile of W/Y is 0.953
-Average MPC in the middle quintile of W/Y is 0.988
-Average MPC in the fourth quintile of W/Y is 1.000
-Average MPC in the bottom quintile of W/Y is 1.000
-Average MPC in the top percentile of y is 0.940
-Average MPC in the top decile of y is 0.936
-Average MPC in the top quintile of y is 0.936
-Average MPC in the second quintile of y is 0.943
-Average MPC in the middle quintile of y is 0.950
-Average MPC in the fourth quintile of y is 0.951
-Average MPC in the bottom quintile of y is 0.966
-Average MPC for the employed is 0.946
-Average MPC for the unemployed is 0.997
+Estimate is center=1.0106184185792786, spread=0.011167944720779917
+Lorenz distance is 2.012642401779253
+Average MPC for all consumers is 0.262
+Average MPC in the top percentile of W/Y is 0.063
+Average MPC in the top decile of W/Y is 0.065
+Average MPC in the top quintile of W/Y is 0.067
+Average MPC in the second quintile of W/Y is 0.088
+Average MPC in the middle quintile of W/Y is 0.219
+Average MPC in the fourth quintile of W/Y is 0.351
+Average MPC in the bottom quintile of W/Y is 0.587
+Average MPC in the top percentile of y is 0.244
+Average MPC in the top decile of y is 0.234
+Average MPC in the top quintile of y is 0.238
+Average MPC in the second quintile of y is 0.267
+Average MPC in the middle quintile of y is 0.272
+Average MPC in the fourth quintile of y is 0.243
+Average MPC in the bottom quintile of y is 0.292
+Average MPC for the employed is 0.251
+Average MPC for the unemployed is 0.413
 Average MPC for the retired is nan
 Of the population with the 1/3 highest MPCs...
-nan% are in the bottom wealth quintile,
-nan% are in the second wealth quintile,
-nan% are in the third wealth quintile,
-nan% are in the fourth wealth quintile,
-and nan% are in the top wealth quintile.
+52.467% are in the bottom wealth quintile,
+33.957% are in the second wealth quintile,
+11.736% are in the third wealth quintile,
+1.815% are in the fourth wealth quintile,
+and 0.026% are in the top wealth quintile.

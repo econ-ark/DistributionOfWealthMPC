@@ -20,7 +20,7 @@ Rfree = 1.04 ** (0.25)  # Quarterly interest factor
 working_T = 41 * 4  # Number of working periods
 retired_T = 55 * 4  # Number of retired periods
 T_cycle = working_T + retired_T  # Total number of periods
-CRRA = 1.0  # Coefficient of relative risk aversion
+CRRA = 1.01  # Coefficient of relative risk aversion
 DiscFac_guess = 0.99  # Initial starting point for discount factor
 UnempPrb = 0.07  # Probability of unemployment while working
 UnempPrbRet = 0.0005  # Probabulity of "unemployment" while retired
@@ -77,7 +77,7 @@ TypeWeight_lifecycle = [d_pct, h_pct, c_pct]
 # Set indiividual parameters for the infinite horizon model
 IndL = 10.0 / 9.0  # Labor supply per individual (constant)
 PermGroFac_i = [1.000**0.25]  # Permanent income growth factor (no perm growth)
-DiscFac_i = 0.97  # Default intertemporal discount factor
+DiscFac_i = 0.99  # Default intertemporal discount factor
 LivPrb_i = [1.0 - 1.0 / 160.0]  # Survival probability
 # Standard deviation of permanent shocks to income
 PermShkStd_i = [(0.01 * 4 / 11) ** 0.5]
