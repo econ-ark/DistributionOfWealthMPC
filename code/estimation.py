@@ -119,7 +119,7 @@ def find_lorenz_distance_at_target_ky(
     optimal_center = root_scalar(
         get_ky_ratio_difference,
         args=(spread, economy, param_name, param_count, dist_type),
-        method="toms748",
+        method="brenth",
         bracket=param_range,
         xtol=10 ** (-6),
     ).root
@@ -415,10 +415,10 @@ def estimate(options, params):
             spread_range = [0.006, 0.008]  # search space for spread_estimate
             init_guess = [0.9867, 0.0067]
         elif options["param_name"] == "Rfree":
-            Rfree = init_infinite["Rfree"]
-            param_range = [Rfree - 0.01, Rfree + 0.1]
-            spread_range = [0.01, 0.1]
-            init_guess = [1.0063522, 0.007]  # for combo
+            #Rfree = init_infinite["Rfree"]
+            param_range = [.99, 1.05]
+            spread_range = [0.001, 0.02]
+            init_guess = [1.01, 0.01]  # for combo
         else:
             print(f"Parameter range for {options['param_name']} has not been defined!")
 
@@ -476,7 +476,7 @@ def estimate(options, params):
                     param_count,
                     options["dist_type"],
                 ),
-                method="toms748",
+                method="brenth",
                 bracket=param_range,
                 xtol=1e-6,
             ).root

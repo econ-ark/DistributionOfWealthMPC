@@ -386,7 +386,7 @@ class CstwMPCMarket(Market):  # EstimationMarketClass
                         self.Population * param_dist.pmv[b] * self.TypeWeight[n]
                     )
                 )
-                print(param_dist.atoms[0, b])
+                #print(param_dist.atoms[0, b])
                 self.agents[j].assign_parameters(**{param_name: param_dist.atoms[0, b]})
                 j += 1
             b += 1
@@ -405,7 +405,7 @@ class CstwMPCMarket(Market):  # EstimationMarketClass
         """
         # Ignore the first X periods to allow economy to stabilize from initial conditions
         KYratioSim = np.mean(np.array(self.history["KtoYnow"])[self.ignore_periods :])
-        diff = KYratioSim - self.KYratioTarget
+        diff = np.log(KYratioSim) - np.log(self.KYratioTarget)
 
         return diff
 
