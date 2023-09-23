@@ -340,6 +340,10 @@ def make_agents(options, params, agent_class, param_count):
             agent_list.append(deepcopy(dropout_type))
             agent_list.append(deepcopy(highschool_type))
             agent_list.append(deepcopy(college_type))
+        
+        # New lines for plotting MPC and spending to income ratio by age
+        for this_agent in agent_list:
+            this_agent.track_vars = ["cNrm", "yNrm", "MPC", "t_age", "pLvl"]
     else:
         if options["do_agg_shocks"]:
             perpetualyouth_type = agent_class(**params.init_agg_shocks)
