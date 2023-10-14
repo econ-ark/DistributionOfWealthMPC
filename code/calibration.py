@@ -51,13 +51,13 @@ pop_sim_ind_dist = 14000
 # Number of periods to simulate (idiosyncratic shocks model, perpetual youth)
 T_sim_PY = 1200
 # Number of periods to simulate (idiosyncratic shocks model, lifecycle)
-T_sim_LC = 1200
+T_sim_LC = 384
 # Number of periods to simulate (aggregate shocks model)
 T_sim_agg_shocks = 1200
 # Number of periods to throw out when looking at history (perpetual youth)
 ignore_periods_PY = 400
 # Number of periods to throw out when looking at history (lifecycle)
-ignore_periods_LC = 400
+ignore_periods_LC = 0
 T_age = T_cycle + 1  # Don't let simulated agents survive beyond this age
 pLvlInitMean_d = np.log(5)  # average initial permanent income, dropouts
 pLvlInitMean_h = np.log(7.5)  # average initial permanent income, HS grads
@@ -423,6 +423,7 @@ init_dropout = {
     "aXtraExtra": [],
     "aXtraNestFac": aXtraNestFac,
     "LivPrb": LivPrb_d,
+    "PopGroFac": PopGroFac,
     "DiscFac": DiscFac_guess,  # dummy value, will be overwritten
     "AgentCount": 0,  # this is overwritten by parameter distributor
     "T_sim": T_sim_LC,
@@ -466,6 +467,7 @@ init_infinite = {
     "aXtraExtra": [None],
     "aXtraNestFac": aXtraNestFac,
     "LivPrb": LivPrb_i,
+    "PopGroFac" : 1.0,
     "DiscFac": DiscFac_i,  # dummy value, will be overwritten
     "cycles": 0,
     "T_cycle": 1,

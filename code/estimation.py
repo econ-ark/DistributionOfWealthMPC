@@ -35,8 +35,8 @@ All of these parameters are set when running this file from one of the do_XXX.py
 files in the root directory.
 """
 
-from code.agents import AggDoWAgent, AggDoWMarket, DoWAgent, DoWMarket
-from code.calibration import init_infinite
+from agents import AggDoWAgent, AggDoWMarket, DoWAgent, DoWMarket
+from calibration import init_infinite
 from copy import copy, deepcopy
 from time import time
 
@@ -325,13 +325,11 @@ def make_agents(options, params, agent_class, param_count):
     # Make AgentTypes for estimation
     if options["do_lifecycle"]:
         dropout_type = agent_class(**params.init_dropout)
-        dropout_type.AgeDstn = calc_stationary_age_dstn(dropout_type.LivPrb, True)
+        dropout_type.AgeDstn = np.array([1.])
         highschool_type = deepcopy(dropout_type)
         highschool_type.assign_parameters(**params.adj_highschool)
-        highschool_type.AgeDstn = calc_stationary_age_dstn(highschool_type.LivPrb, True)
         college_type = deepcopy(dropout_type)
         college_type.assign_parameters(**params.adj_college)
-        college_type.AgeDstn = calc_stationary_age_dstn(college_type.LivPrb, True)
         dropout_type.update()
         highschool_type.update()
         college_type.update()
@@ -343,7 +341,7 @@ def make_agents(options, params, agent_class, param_count):
         
         # New lines for plotting MPC and spending to income ratio by age
         for this_agent in agent_list:
-            this_agent.track_vars = ["cNrm", "yNrm", "MPC", "t_age", "pLvl"]
+            this_agent.track_vars = ["cNrm", "TranShk", "MPC", "t_age", "pLvl", "aLvl", "EmpNow", "WeightFac"]
     else:
         if options["do_agg_shocks"]:
             perpetualyouth_type = agent_class(**params.init_agg_shocks)
@@ -382,7 +380,7 @@ def set_up_economy(options, params, param_count):
             PopGroFac=params.PopGroFac,
             TypeWeight=params.TypeWeight_lifecycle,
             T_retire=params.working_T - 1,
-            act_T=params.T_sim_LC,
+            act_T=1,
             ignore_periods=params.ignore_periods_LC,
         )
     else:
@@ -415,8 +413,12 @@ def estimate(options, params):
             param_range = [0.2, 70.0]
             spread_range = [0.00001, 1.0]
         elif options["param_name"] == "DiscFac":
-            param_range = [0.95, 0.995]  # search space for center_estimate
-            spread_range = [0.006, 0.008]  # search space for spread_estimate
+            if options['do_lifecycle']:
+                param_range = [0.90, 0.995]
+                spread_range = [0.006, 0.015]
+            else:
+                param_range = [0.95, 0.995]   # search space for center_estimate
+                spread_range = [0.006, 0.008]  # search space for spread_estimate
             init_guess = [0.9867, 0.0067]
         elif options["param_name"] == "Rfree":
             #Rfree = init_infinite["Rfree"]
@@ -453,7 +455,7 @@ def estimate(options, params):
                 spread_estimate = (
                     minimize_scalar(
                         find_lorenz_distance_at_target_ky,
-                        bounds=spread_range,
+                        bracket=spread_range,
                         args=(
                             economy,
                             options["param_name"],

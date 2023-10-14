@@ -21,13 +21,27 @@ def mystr(number):
     return f"{number:.3f}"
 
 
-class CstwMPCAgent(AgentType):  # EstimationAgentClass
+class CstwMPCAgent(AgentType):
     """
-    A slight extension of the idiosyncratic consumer type for the cstwMPC model.
+    A slight extension of the basic consumer types for the cstwMPC model. This
+    class overwrites the reset() and market_action() methods to account for
+    some slightly non-standard code structures in cstwMPC. This class is inherited
+    by new consumer classes; see below.
     """
 
     def reset(self):
+        '''
+        When this type is reset, all of its simulated states are set to None, so
+        that they're properly re-initialized by initialize_sim
+        '''
+        # Clear simulated states and initialize the simulation
+        for var in self.state_vars:
+            self.state_now[var] = None
         self.initialize_sim()
+        
+        # Set the initial distribution of age to its ergodic distribution. This
+        # code is deprecated after the lifecycle simulation overhaul; it does
+        # nothing interesting.
         self.t_age = (
             DiscreteDistribution(
                 self.AgeDstn,
@@ -38,19 +52,114 @@ class CstwMPCAgent(AgentType):  # EstimationAgentClass
             .astype(int)
         )
         self.t_cycle = copy(self.t_age)
+        
+        # If this is the aggregate shocks model, give everyone steady state assets
         if hasattr(self, "kGrid"):
             # Start simulation near SS
             self.aLvlNow = self.kInit * np.ones(self.AgentCount)
             self.aNrmNow = self.aLvlNow / self.pLvlNow
 
     def market_action(self):
+        '''
+        When the market calls on an agent type to take its market action, code
+        behavior depends on whether this is a lifecycle or infinite horizon model.
+        If it's infinite horizon, one period is simulated, and the results are
+        reported back to the market as usual. If it's lifecycle, then the *entire*
+        lifecycle is simulated from age 0 to 384; the histories are flattened
+        into 1D arrays and put back into state_now to be collected by reap().
+        This approach vastly accelerates the simulation of the lifecycle model.
+        '''
+        # In the aggregate shocks version, keep mean pLvl at unity
         if hasattr(self, "kGrid"):
             self.pLvl = self.pLvlNow / np.mean(self.pLvlNow)
-        self.simulate(1)
-
-
+        
+        if self.cycles == 0:
+            # Simulate one period if infinite horizon
+            self.simulate(1)
+        else:
+            # Simulate *all* of the periods if lifecycle!
+            self.simulate(self.T_cycle) 
+            
+            # Reshape the history of simulated values and put it into state_now
+            for var in self.track_vars:
+                self.state_now[var] = self.history[var].flatten()
+            
+            # The reap code expects some variables to not be in state_now
+            self.MPCnow = self.state_now['MPC']
+            self.EmpNow = self.state_now['EmpNow']
+            self.t_age = self.state_now['t_age']
+            
+            
 class DoWAgent(CstwMPCAgent, IndShockConsumerType):
-    pass
+    def sim_one_period(self):
+        '''
+        Overwrite the core simulation routine with a simplified special one, but
+        only use it for lifecycle models.
+        '''
+        if self.cycles == 0: # Use core simulation method if infinite horizon
+            IndShockConsumerType.sim_one_period(self)
+            self.state_now["WeightFac"] = self.PopGroFac**(-self.t_age)
+            return
+        
+        # If lifecycle, first deal with moving from last period's values to this period
+        for var in self.state_now:
+            self.state_prev[var] = self.state_now[var]
+
+            if isinstance(self.state_now[var], np.ndarray):
+                self.state_now[var] = np.empty(self.AgentCount)
+            else:
+                # Probably an aggregate variable. It may be getting set by the Market.
+                pass
+        
+        # First, get the age of all agents-- which is the same across all of them!
+        t = self.t_cycle[0]
+        N = self.AgentCount
+        
+        # Now, generate income shocks for all of the agents
+        IncShkDstn = self.IncShkDstn[t-1]
+        IncShkNow = IncShkDstn.draw(N)
+        PermShkNow = IncShkNow[0,:]
+        TranShkNow = IncShkNow[1,:]
+        PermGroFac = self.PermGroFac[t-1]
+        RfreeEff = self.Rfree / (PermGroFac * PermShkNow)
+        pLvlNow = PermGroFac * PermShkNow * self.state_prev['pLvl']
+        
+        # Move from aNrmPrev to mNrmNow using our income shock draws
+        aNrmPrev = self.state_prev['aNrm']
+        bNrmNow = RfreeEff * aNrmPrev
+        mNrmNow = bNrmNow + TranShkNow
+        
+        # Find consumption and the MPC for all agents
+        cFuncNow = self.solution[t].cFunc
+        cNrmNow, MPCnow = cFuncNow.eval_with_derivative(mNrmNow)
+        
+        # Calculate end-of-period assets in both level and normalized
+        aNrmNow = mNrmNow - cNrmNow
+        aLvlNow = aNrmNow * pLvlNow
+        
+        # Compute cumulative survival probability to this age
+        LivPrb = np.concatenate([[1.], self.LivPrb])
+        CumLivPrb = np.prod(LivPrb[:(t+1)])
+        CohortWeight = self.PopGroFac**(-t)
+        WeightFac = CumLivPrb * CohortWeight
+        
+        # Write these results to state_now
+        self.state_now["mNrm"] = mNrmNow
+        self.state_now["bNrm"] = bNrmNow
+        self.state_now["aNrm"] = aNrmNow
+        self.state_now["pLvl"] = pLvlNow
+        self.state_now["aLvl"] = aLvlNow
+        self.state_now["cNrm"] = cNrmNow
+        self.state_now["TranShk"] = TranShkNow
+        self.state_now["MPC"] = MPCnow
+        self.state_now["WeightFac"] = WeightFac * np.ones(self.AgentCount)
+        self.EmpNow = TranShkNow == self.IncUnemp
+        
+        # Advance time for all agents
+        self.t_age = self.t_age + 1  # Age all consumers by one period
+        self.t_cycle = self.t_cycle + 1  # Age all consumers within their cycle
+        # Reset to zero for those who have reached the end
+        self.t_cycle[self.t_cycle == self.T_cycle] = 0
 
 
 class AggDoWAgent(CstwMPCAgent, AggShockConsumerType):
@@ -67,7 +176,7 @@ class CstwMPCMarket(Market):  # EstimationMarketClass
         Make a new instance of CstwMPCMarket.
         """
 
-        reap_vars = ["aLvl", "pLvl", "MPCnow", "TranShk", "EmpNow", "t_age"]
+        reap_vars = ["aLvl", "pLvl", "MPCnow", "TranShk", "EmpNow", "WeightFac", "t_age"]
         # Nothing needs to be sent back to agents in the idiosyncratic shocks version
         sow_vars = []
         const_vars = []  # ['LorenzBool','ManyStatsBool']
@@ -166,7 +275,7 @@ class CstwMPCMarket(Market):  # EstimationMarketClass
             if shock:
                 self.reap_state[var] = harvest
 
-    def mill_rule(self, aLvl, pLvl, MPCnow, TranShk, EmpNow, t_age):
+    def mill_rule(self, aLvl, pLvl, MPCnow, TranShk, EmpNow, WeightFac, t_age):
         """
         The mill_rule for this class simply calls the method calc_stats.
         """
@@ -176,6 +285,7 @@ class CstwMPCMarket(Market):  # EstimationMarketClass
             MPCnow,
             TranShk,
             EmpNow,
+            WeightFac,
             t_age,
             self.parameters["LorenzBool"],
             self.parameters["ManyStatsBool"],
@@ -194,6 +304,7 @@ class CstwMPCMarket(Market):  # EstimationMarketClass
         MPCnow,
         TranShkNow,
         EmpNow,
+        WeightFac,
         t_age,
         LorenzBool,
         ManyStatsBool,
@@ -213,8 +324,10 @@ class CstwMPCMarket(Market):  # EstimationMarketClass
             Arrays with transitory income shocks, listed by each ConsumerType in self.agents.
         EmpNow : [np.array]
             Arrays with employment states: True if employed, False otherwise.
+        WeightFac : [np.array]
+            Arrays with population weighting factor, listed by each ConsumerType in self.agents.
         t_age : [np.array]
-            Arrays with periods elapsed since model entry, listed by each ConsumerType in self.agents.
+            Arrays with model ages for each agent, listed by each ConsumerType in self.agents.
         LorenzBool: bool
             Indicator for whether the Lorenz target points should be calculated.  Usually False,
             only True when DiscFac has been identified for a particular nabla.
@@ -229,12 +342,12 @@ class CstwMPCMarket(Market):  # EstimationMarketClass
         # Combine inputs into single arrays
         aLvl = np.hstack(aLvlNow)
         pLvl = np.hstack(pLvlNow)
+        CohortWeight = np.hstack(WeightFac)
         age = np.hstack(t_age)
         TranShk = np.hstack(TranShkNow)
         EmpNow = np.hstack(EmpNow)
 
         # Calculate the capital to income ratio in the economy
-        CohortWeight = self.PopGroFac ** (-age)
         CapAgg = np.sum(aLvl * CohortWeight)
         IncAgg = np.sum(pLvl * TranShk * CohortWeight)
         KtoYnow = CapAgg / IncAgg
