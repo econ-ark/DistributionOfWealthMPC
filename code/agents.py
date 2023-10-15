@@ -39,20 +39,6 @@ class CstwMPCAgent(AgentType):
             self.state_now[var] = None
         self.initialize_sim()
         
-        # Set the initial distribution of age to its ergodic distribution. This
-        # code is deprecated after the lifecycle simulation overhaul; it does
-        # nothing interesting.
-        self.t_age = (
-            DiscreteDistribution(
-                self.AgeDstn,
-                np.arange(self.AgeDstn.size),
-                seed=self.RNG.integers(0, 2**31 - 1),
-            )
-            .draw(self.AgentCount, exact_match=False)
-            .astype(int)
-        )
-        self.t_cycle = copy(self.t_age)
-        
         # If this is the aggregate shocks model, give everyone steady state assets
         if hasattr(self, "kGrid"):
             # Start simulation near SS
@@ -153,11 +139,12 @@ class DoWAgent(CstwMPCAgent, IndShockConsumerType):
         self.state_now["TranShk"] = TranShkNow
         self.state_now["MPC"] = MPCnow
         self.state_now["WeightFac"] = WeightFac * np.ones(self.AgentCount)
-        self.EmpNow = TranShkNow == self.IncUnemp
+        self.EmpNow = np.logical_not(TranShkNow == self.IncUnemp)
+        self.state_now['t_age'] = self.t_age.astype(float)
         
         # Advance time for all agents
-        self.t_age = self.t_age + 1  # Age all consumers by one period
-        self.t_cycle = self.t_cycle + 1  # Age all consumers within their cycle
+        self.t_age += 1  # Age all consumers by one period
+        self.t_cycle += 1  # Age all consumers within their cycle
         # Reset to zero for those who have reached the end
         self.t_cycle[self.t_cycle == self.T_cycle] = 0
 
