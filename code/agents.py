@@ -473,6 +473,18 @@ class CstwMPCMarket(Market):  # EstimationMarketClass
                 sigma=spread,
             ).discretize(N=param_count)
 
+        elif dist_type == "logdiff_uniform":
+            if param_name == "Rfree":
+                top = self.Rfree_cusp - np.exp(center)
+                bot = top - 2 * spread
+                param_dist = Uniform(bot=bot, top=top).discretize(N=param_count)
+
+            elif param_name == "DiscFac":
+                top = self.DiscFac_cusp - np.exp(center)
+                bot = top - 2 * spread
+                param_dist = Uniform(bot=bot, top=top).discretize(N=param_count)
+        
+
         # Distribute the parameters to the various types, assigning consecutive types the same
         # value if there are more types than values
         replication_factor = len(self.agents) // param_count

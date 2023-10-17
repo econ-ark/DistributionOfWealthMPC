@@ -35,8 +35,8 @@ All of these parameters are set when running this file from one of the do_XXX.py
 files in the root directory.
 """
 
-from agents import AggDoWAgent, AggDoWMarket, DoWAgent, DoWMarket
-from calibration import init_infinite
+from code.agents import AggDoWAgent, AggDoWMarket, DoWAgent, DoWMarket
+from code.calibration import init_infinite
 from copy import copy, deepcopy
 from time import time
 
@@ -238,6 +238,8 @@ def get_spec_name(options):
         dist_text = "Unif"
     elif options["dist_type"] == "lognormal":
         dist_text = "Lognrm"
+    elif options["dist_type"] == "logdiff_uniform":
+        dist_text = "Unif_logdiff"
     else:
         raise ValueError("Distribution for parameter must be specified.")
 
@@ -396,6 +398,11 @@ def set_up_economy(options, params, param_count):
         economy.update()
         economy.make_AggShkHist()
 
+     # Store cusp values for beta and R for the log difference implementation
+
+    economy.Rfree_cusp = ((economy.agents[0].PermGroFac[0]) ** economy.agents[0].CRRA )  / (economy.agents[0].LivPrb[0] * economy.agents[0].Rfree)
+    economy.DiscFac_cusp = ((economy.agents[0].PermGroFac[0]) ** economy.agents[0].CRRA ) / (economy.agents[0].LivPrb[0] * economy.agents[0].Rfree)
+
     return economy
 
 
@@ -428,9 +435,13 @@ def estimate(options, params):
         else:
             print(f"Parameter range for {options['param_name']} has not been defined!")
 
+        # Special bounding region for the log difference implementation
+
+        if options["dist_type"] == "logdiff_uniform":
+            param_range = [-7,-5] #overwrites the param range set before, but leaves the spread range unaffected
+
         if options["do_param_dist"]:
             # Run the param-dist estimation
-
             if options["do_combo_estimation"]:
                 t_start = time()
 
