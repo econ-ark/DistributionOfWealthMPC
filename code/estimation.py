@@ -115,6 +115,7 @@ def find_lorenz_distance_at_target_ky(
 
     # use more sophisticated discrete distribution with zero mass point at ends of support
     # root finding
+    print(f"find_lorenz_distance_at_target_KY now trying spread = {spread}...")
 
     optimal_center = root_scalar(
         get_ky_ratio_difference,
@@ -428,9 +429,13 @@ def estimate(options, params):
                 spread_range = [0.006, 0.008]  # search space for spread_estimate
             init_guess = [0.9867, 0.0067]
         elif options["param_name"] == "Rfree":
-            #Rfree = init_infinite["Rfree"]
-            param_range = [.99, 1.05]
-            spread_range = [0.001, 0.02]
+            if options['do_lifecycle']:
+                param_range = [0.90, 1.05]
+                spread_range = [0.008, 0.016]
+            else:
+                param_range = [.95, 1.05]  # search space for center_estimate
+                spread_range = [0.008, 0.016]  # search space for spread_estimate
+            
             init_guess = [1.01, 0.01]  # for combo
         else:
             print(f"Parameter range for {options['param_name']} has not been defined!")
@@ -438,7 +443,7 @@ def estimate(options, params):
         # Special bounding region for the log difference implementation
 
         if options["dist_type"] == "logdiff_uniform":
-            param_range = [-7,-5] #overwrites the param range set before, but leaves the spread range unaffected
+            param_range = [-5000,-100] #overwrites the param range set before, but leaves the spread range unaffected
 
         if options["do_param_dist"]:
             # Run the param-dist estimation
