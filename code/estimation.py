@@ -399,10 +399,17 @@ def set_up_economy(options, params, param_count):
         economy.update()
         economy.make_AggShkHist()
 
-     # Store cusp values for beta and R for the log difference implementation
+    # Store cusp values for beta and R for the log difference implementation
+    # using the mortality-modified growth impatience condition
+    
+    G = economy.agents[0].PermGroFac[0]
+    rho = economy.agents[0].CRRA
+    PLiv = economy.agents[0].LivPrb[0]
+    R = economy.agents[0].Rfree
+    beta = economy.agents[0].DiscFac
 
-    economy.Rfree_cusp = ((economy.agents[0].PermGroFac[0]) ** economy.agents[0].CRRA )  / (economy.agents[0].LivPrb[0] * economy.agents[0].Rfree)
-    economy.DiscFac_cusp = ((economy.agents[0].PermGroFac[0]) ** economy.agents[0].CRRA ) / (economy.agents[0].LivPrb[0] * economy.agents[0].Rfree)
+    economy.Rfree_cusp = (G / PLiv)**rho / (PLiv * beta)
+    economy.DiscFac_cusp = (G/ PLiv)**rho / (R) # See HARK definition of GICRaw... DiscFacEff is computed, but not for Rfree
 
     return economy
 
@@ -430,20 +437,19 @@ def estimate(options, params):
             init_guess = [0.9867, 0.0067]
         elif options["param_name"] == "Rfree":
             if options['do_lifecycle']:
-                param_range = [0.90, 1.05]
-                spread_range = [0.008, 0.016]
+                param_range = [1.0, 1.02]      # change later for life-cycle model 
+                spread_range = [0.001, 0.005]
             else:
-                param_range = [.95, 1.05]  # search space for center_estimate
-                spread_range = [0.008, 0.016]  # search space for spread_estimate
+                param_range = [1.0, 1.02]  # search space for center_estimate
+                spread_range = [0.001, 0.005]  # search space for spread_estimate
             
             init_guess = [1.01, 0.01]  # for combo
         else:
             print(f"Parameter range for {options['param_name']} has not been defined!")
 
         # Special bounding region for the log difference implementation
-
         if options["dist_type"] == "logdiff_uniform":
-            param_range = [-5000,-100] #overwrites the param range set before, but leaves the spread range unaffected
+            param_range = [-7,-1] #overwrites the param range set before, but leaves the spread range unaffected
 
         if options["do_param_dist"]:
             # Run the param-dist estimation
@@ -517,13 +523,25 @@ def estimate(options, params):
         )
         economy.solve()
         economy.calc_lorenz_distance()
-        print(
-            f"Estimate is center={center_estimate}, spread={spread_estimate}, "
-            f"took {t_end - t_start} seconds."
-        )
 
-        economy.center_estimate = center_estimate
-        economy.spread_estimate = spread_estimate
+        if options["dist_type"] == "logdiff_uniform":
+            print(
+                f"Estimate is center={(economy.Rfree_cusp - np.exp(center_estimate) - spread_estimate)}, spread={spread_estimate}, "
+                f"took {t_end - t_start} seconds."
+            )
+        else:
+            print(
+                f"Estimate is center={center_estimate}, spread={spread_estimate}, "
+                f"took {t_end - t_start} seconds."
+            )
+
+        if options["dist_type"] == "logdiff_uniform":
+            economy.center_estimate = economy.Rfree_cusp - np.exp(center_estimate) - spread_estimate
+            economy.spread_estimate = spread_estimate
+        else: 
+            economy.center_estimate = center_estimate
+            economy.spread_estimate = spread_estimate
+
         economy.show_many_stats(spec_name)
         print(f"These results have been saved to ./code/results/{spec_name}.txt\n\n")
 
