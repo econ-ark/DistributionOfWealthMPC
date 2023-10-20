@@ -36,11 +36,14 @@ files in the root directory.
 """
 
 from code.agents import AggDoWAgent, AggDoWMarket, DoWAgent, DoWMarket
-from code.calibration import init_infinite
+from code.calibration import init_infinite, SCF_wealth, SCF_weights
 from copy import copy, deepcopy
 from time import time
 
 import numpy as np
+import matplotlib.pyplot as plt  # Plotting tools
+from IPython.core.getipython import get_ipython
+
 from HARK.utilities import get_lorenz_shares
 from scipy.optimize import minimize, minimize_scalar, root_scalar
 
@@ -542,8 +545,64 @@ def estimate(options, params):
             economy.center_estimate = center_estimate
             economy.spread_estimate = spread_estimate
 
+        # Everything below this line is to produce the final plot showing key results
+        # Store attributes for legend of the plot
+        if options["param_name"] == "DiscFac":
+            economy.param = "beta"
+        elif options["param_name"] == "CRRA":
+            economy.param = "rho"
+        elif options["param_name"] == "Rfree":
+            economy.param = "R"
+        else:
+            economy.param = options["param_name"]
+
+        if options["do_param_dist"]:
+            economy.model = "Dist"
+        else:
+            economy.model = "Point"
+
         economy.show_many_stats(spec_name)
         print(f"These results have been saved to ./code/results/{spec_name}.txt\n\n")
+
+        # Construct the Lorenz curves and plot them
+        pctiles = np.linspace(0.001, 0.999, 15)
+        SCF_Lorenz_points = get_lorenz_shares(
+        SCF_wealth, weights=SCF_weights, percentiles=pctiles
+        )
+
+        if options["do_param_dist"]:
+            sim_wealth = np.concatenate(economy.reap_state["aLvl"])
+        else:
+            sim_wealth = economy.reap_state["aLvl"][0]
+    
+        sim_Lorenz_points = get_lorenz_shares(sim_wealth, percentiles=pctiles)
+
+        # Plot
+        plt.figure(figsize=(5, 5))
+        plt.title("Wealth Distribution")
+        plt.plot(pctiles, SCF_Lorenz_points, "-k", label="SCF")
+        plt.plot(pctiles, sim_Lorenz_points, "-.k", label=f"{economy.param}-{economy.model}")
+        plt.plot(pctiles, pctiles, "--k", label="45 Degree")
+        plt.xlabel("Percentile of net worth")
+        plt.ylabel("Cumulative share of wealth")
+        plt.legend(loc=2)
+        plt.ylim([0, 1])
+        # Save the plot to the specified file path
+        if spec_name is not None:
+            file_path = economy.my_file_path + "/figures/" + spec_name + "Plot.png"
+        plt.savefig(file_path, format="png", dpi=300)  # You can adjust the format and dpi as needed
+
+        #Display plot; if running from command line, set interactive mode on, and make figure without blocking execution
+        if (
+            str(type(get_ipython()))
+            == "<class 'ipykernel.zmqshell.ZMQInteractiveShell'>"
+        ):
+            plt.show()
+        else:
+            plt.ioff()
+            plt.show(block=False)
+            # Give OS time to make the plot (it only draws when main thread is sleeping)
+            plt.pause(2)
 
     return economy
 
