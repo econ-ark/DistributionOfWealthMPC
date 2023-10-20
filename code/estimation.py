@@ -412,7 +412,7 @@ def set_up_economy(options, params, param_count):
     beta = economy.agents[0].DiscFac
 
     economy.Rfree_cusp = (G / PLiv)**rho / (PLiv * beta)
-    economy.DiscFac_cusp = (G/ PLiv)**rho / (R) # See HARK definition of GICRaw... DiscFacEff is computed, but not for Rfree
+    economy.DiscFac_cusp = (G/ PLiv)**rho / (PLiv * R) # See HARK definition of GICRaw... DiscFacEff is computed, but not for Rfree
 
     return economy
 
@@ -528,10 +528,16 @@ def estimate(options, params):
         economy.calc_lorenz_distance()
 
         if options["dist_type"] == "logdiff_uniform":
-            print(
-                f"Estimate is center={(economy.Rfree_cusp - np.exp(center_estimate) - spread_estimate)}, spread={spread_estimate}, "
-                f"took {t_end - t_start} seconds."
-            )
+            if options["param_name"] == "DiscFac":
+                print(
+                    f"Estimate is center={(economy.DiscFac_cusp - np.exp(center_estimate) - spread_estimate)}, spread={spread_estimate}, "
+                    f"took {t_end - t_start} seconds."
+                )
+            elif options["param_name"] == "Rfree":
+                print(
+                    f"Estimate is center={(economy.Rfree_cusp - np.exp(center_estimate) - spread_estimate)}, spread={spread_estimate}, "
+                    f"took {t_end - t_start} seconds."
+                )
         else:
             print(
                 f"Estimate is center={center_estimate}, spread={spread_estimate}, "
@@ -539,7 +545,11 @@ def estimate(options, params):
             )
 
         if options["dist_type"] == "logdiff_uniform":
-            economy.center_estimate = economy.Rfree_cusp - np.exp(center_estimate) - spread_estimate
+            if options["param_name"] == "DiscFac":
+                economy.center_estimate = economy.DiscFac_cusp - np.exp(center_estimate) - spread_estimate
+            elif options["param_name"] == "Rfree":
+                economy.center_estimate = economy.Rfree_cusp - np.exp(center_estimate) - spread_estimate
+
             economy.spread_estimate = spread_estimate
         else: 
             economy.center_estimate = center_estimate
