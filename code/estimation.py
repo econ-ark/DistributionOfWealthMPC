@@ -422,6 +422,9 @@ def estimate(options, params):
     param_count = get_param_count(options)
     economy = set_up_economy(options, params, param_count)
 
+    economy.spec_name = spec_name
+    economy.param_count = param_count
+
     # Estimate the model as requested
     if options["run_estimation"]:
         print(f"Beginning an estimation with the specification name {spec_name}...")
@@ -440,7 +443,7 @@ def estimate(options, params):
             init_guess = [0.9867, 0.0067]
         elif options["param_name"] == "Rfree":
             if options['do_lifecycle']:
-                param_range = [1.0, 1.02]      # change later for life-cycle model 
+                param_range = [0.9, 1.02]      # change later for life-cycle model 
                 spread_range = [0.001, 0.005]
             else:
                 param_range = [1.0, 1.02]  # search space for center_estimate
@@ -555,67 +558,78 @@ def estimate(options, params):
             economy.center_estimate = center_estimate
             economy.spread_estimate = spread_estimate
 
-        # Everything below this line is to produce the final plot showing key results
-        # Store attributes for legend of the plot
-        if options["param_name"] == "DiscFac":
-            economy.param = "beta"
-        elif options["param_name"] == "CRRA":
-            economy.param = "rho"
-        elif options["param_name"] == "Rfree":
-            economy.param = "R"
-        else:
-            economy.param = options["param_name"]
-
-        if options["do_param_dist"]:
-            economy.model = "Dist"
-        else:
-            economy.model = "Point"
-
         economy.show_many_stats(spec_name)
         print(f"These results have been saved to ./code/results/{spec_name}.txt\n\n")
 
-        # Construct the Lorenz curves and plot them
-        pctiles = np.linspace(0.001, 0.999, 15)
-        SCF_Lorenz_points = get_lorenz_shares(
-        SCF_wealth, weights=SCF_weights, percentiles=pctiles
-        )
-
-        if options["do_param_dist"]:
-            sim_wealth = np.concatenate(economy.reap_state["aLvl"])
-        else:
-            sim_wealth = economy.reap_state["aLvl"][0]
-    
-        sim_Lorenz_points = get_lorenz_shares(sim_wealth, percentiles=pctiles)
-
-        # Plot
-        plt.figure(figsize=(5, 5))
-        plt.title("Wealth Distribution")
-        plt.plot(pctiles, SCF_Lorenz_points, "-k", label="SCF")
-        plt.plot(pctiles, sim_Lorenz_points, "-.k", label=f"{economy.param}-{economy.model}")
-        plt.plot(pctiles, pctiles, "--k", label="45 Degree")
-        plt.xlabel("Percentile of net worth")
-        plt.ylabel("Cumulative share of wealth")
-        plt.legend(loc=2)
-        plt.ylim([0, 1])
-        # Save the plot to the specified file path
-        if spec_name is not None:
-            file_path = economy.my_file_path + "/figures/" + spec_name + "Plot.png"
-        plt.savefig(file_path, format="png", dpi=300)  # You can adjust the format and dpi as needed
-
-        #Display plot; if running from command line, set interactive mode on, and make figure without blocking execution
-        if (
-            str(type(get_ipython()))
-            == "<class 'ipykernel.zmqshell.ZMQInteractiveShell'>"
-        ):
-            plt.show()
-        else:
-            plt.ioff()
-            plt.show(block=False)
-            # Give OS time to make the plot (it only draws when main thread is sleeping)
-            plt.pause(2)
-
     return economy
 
+def plot_lorenz_dist(options, economy):
+    """
+    A final method to be ran after "estimation" which produces a graph of the key 
+    results of the structural estimation; this will capture how well the estimated 
+    parameters can be used to match the wealth targets from the data.
+    """
+
+    # Everything below this line is to produce the final plot showing key results
+    # Store attributes for legend of the plot
+    if options["param_name"] == "DiscFac":
+        economy.param = "beta"
+    elif options["param_name"] == "CRRA":
+        economy.param = "rho"
+    elif options["param_name"] == "Rfree":
+        economy.param = "R"
+    else:
+        economy.param = options["param_name"]
+
+    if options["do_param_dist"]:
+        economy.model = "Dist"
+    else:
+        economy.model = "Point"
+
+    # Construct the Lorenz curves from the data
+    pctiles = np.linspace(0.001, 0.999, 15) # may need to change percentiles
+    SCF_Lorenz_points = get_lorenz_shares(
+    SCF_wealth, weights=SCF_weights, percentiles=pctiles
+    )
+
+    # Construct the Lorenz curves from the simulated model
+    if options["do_lifecycle"]:
+        sim_wealth = np.concatenate(economy.reap_state['aLvl'])
+        sim_weight = np.concatenate(economy.reap_state['WeightFac'])
+        order = np.argsort(sim_wealth)
+        sim_wealth = sim_wealth[order]
+        sim_weight = sim_weight[order]
+        sim_Lorenz_points = get_lorenz_shares(sim_wealth, weights=sim_weight, percentiles=pctiles)
+    else:
+        sim_wealth = np.concatenate(economy.reap_state["aLvl"])
+        sim_Lorenz_points = get_lorenz_shares(sim_wealth, percentiles=pctiles)
+    
+    # Plot
+    plt.figure(figsize=(5, 5))
+    plt.title("Wealth Distribution")
+    plt.plot(pctiles, SCF_Lorenz_points, "-k", label="SCF")
+    plt.plot(pctiles, sim_Lorenz_points, "-.k", label=f"{economy.param}-{economy.model}")
+    plt.plot(pctiles, pctiles, "--k", label="45 Degree")
+    plt.xlabel("Percentile of net worth")
+    plt.ylabel("Cumulative share of wealth")
+    plt.legend(loc=2)
+    plt.ylim([0, 1])
+    # Save the plot to the specified file path
+    if economy.spec_name is not None:
+        file_path = economy.my_file_path + "/figures/" + economy.spec_name + "Plot.png"
+    plt.savefig(file_path, format="png", dpi=300)  # You can adjust the format and dpi as needed
+
+    #Display plot; if running from command line, set interactive mode on, and make figure without blocking execution
+    if (
+        str(type(get_ipython()))
+        == "<class 'ipykernel.zmqshell.ZMQInteractiveShell'>"
+    ):
+        plt.show()
+    else:
+        plt.ioff()
+        plt.show(block=False)
+        # Give OS time to make the plot (it only draws when main thread is sleeping)
+        plt.pause(2)
 
 class Estimator:
     def __init__(self, options, parameters):

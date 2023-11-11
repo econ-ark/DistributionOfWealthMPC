@@ -1,5 +1,3 @@
-# Import relevant packages
- 
 import code.calibration as parameters
 import warnings  # The warnings package allows us to ignore some harmless but alarming warning messages
 from code.calibration import SCF_wealth, SCF_weights
@@ -17,7 +15,7 @@ def mystr(number):
 
 # Specify parameters for options dictionary
 param_name = "Rfree"  # Which parameter to introduce heterogeneity in
-dist_type = "logdiff_uniform"  # Which type of distribution to use
+dist_type = "lognormal"  # Which type of distribution to use
 run_estimation = True  # Runs the estimation if True
 run_sensitivity = [False, False, False, False, False, False, False, False] # Choose which sensitivity analyses to run: rho, xi_sigma, psi_sigma, mu, urate, mortality, g, R
 find_beta_vs_KY = False # Computes K/Y ratio for a wide range of beta; should have do_beta_dist = False
@@ -43,7 +41,6 @@ options = {
 }
 
 EstimationEconomy = estimate(options, parameters)
-
 plot_lorenz_dist(options, EstimationEconomy)
 
 # Then solve with heterogeneity
@@ -68,5 +65,4 @@ options = {
 }
 
 EstimationEconomy = estimate(options, parameters)
-
 plot_lorenz_dist(options, EstimationEconomy)

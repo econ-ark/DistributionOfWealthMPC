@@ -3,7 +3,7 @@
 import code.calibration as parameters
 import warnings  # The warnings package allows us to ignore some harmless but alarming warning messages
 from code.calibration import SCF_wealth, SCF_weights
-from code.estimation import estimate
+from code.estimation import estimate, plot_lorenz_dist
 
 # Import related generic python packages
 import matplotlib.pyplot as plt  # Plotting tools
@@ -44,6 +44,8 @@ options = {
 
 EstimationEconomy = estimate(options, parameters)
 
+plot_lorenz_dist(options, EstimationEconomy)
+
 # Then solve with heterogeneity
 do_param_dist = True  # Do param-dist version if True, param-point if False
 do_lifecycle = False  # Use lifecycle model if True, perpetual youth if False
@@ -66,3 +68,5 @@ options = {
 }
 
 EstimationEconomy = estimate(options, parameters)
+
+plot_lorenz_dist(options, EstimationEconomy)
