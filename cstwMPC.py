@@ -24,10 +24,14 @@
 # %% code_folding=[]
 # This cell does some standard python setup!
 
-import code.calibration as parameters
+import os, sys
+
+sys.path.append(os.getcwd())
+sys.path.append(os.getcwd() + "\code")
+import calibration as parameters
 import warnings  # The warnings package allows us to ignore some harmless but alarming warning messages
-from code.calibration import SCF_wealth, SCF_weights
-from code.estimation import estimate
+from calibration import SCF_wealth, SCF_weights
+from estimation import estimate
 
 # Import related generic python packages
 import matplotlib.pyplot as plt  # Plotting tools
@@ -155,7 +159,7 @@ run_sensitivity = [False, False, False, False, False, False, False, False]
 # Computes K/Y ratio for a wide range of beta; should have do_beta_dist = False
 find_beta_vs_KY = False
 # Uses a "tractable consumer" rather than solving full model when True
-do_tractable = True
+do_tractable = False
 
 # Solve for the $\beta-Point$ (do_param_dist=False) for speed
 """
@@ -182,6 +186,7 @@ options = {
     "do_lifecycle": do_lifecycle,
     "do_agg_shocks": do_agg_shocks,
     "do_liquid": do_liquid,
+    "do_combo_estimation": False,
 }
 
 
@@ -211,6 +216,12 @@ plt.legend(loc=2)
 plt.ylim([0, 1])
 plt.show("wealth_distribution_1")
 
+
+# %%
+print(sim_wealth.shape)
+
+# %%
+print(EstimationEconomy.agents)
 
 # %% [markdown]
 # ## Time Preference Heterogeneneity
@@ -250,7 +261,7 @@ with heterogeneity, no aggregate shocks, perpetual youth model, matching net wor
 do_param_dist = True  # Do param-dist version if True, param-point if False
 do_lifecycle = False  # Use lifecycle model if True, perpetual youth if False
 do_agg_shocks = False  # Solve the FBS aggregate shocks version of the model
-do_liquid = True  # Matches liquid assets data when True, net worth data when False
+do_liquid = False  # Matches liquid assets data when True, net worth data when False
 do_tractable = False  #
 
 
@@ -298,5 +309,8 @@ plt.show("wealth_distribution_2")
 
 # %%
 np.asarray(EstimationEconomy.reap_state["aLvl"]).shape
+
+# %%
+print(sim_wealth.shape)
 
 # %%

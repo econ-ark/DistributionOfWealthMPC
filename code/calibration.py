@@ -20,7 +20,7 @@ Rfree = 1.04 ** (0.25)  # Quarterly interest factor
 working_T = 41 * 4  # Number of working periods
 retired_T = 55 * 4  # Number of retired periods
 T_cycle = working_T + retired_T  # Total number of periods
-CRRA = 1.0  # Coefficient of relative risk aversion
+CRRA = 1.01  # Coefficient of relative risk aversion
 DiscFac_guess = 0.99  # Initial starting point for discount factor
 UnempPrb = 0.07  # Probability of unemployment while working
 UnempPrbRet = 0.0005  # Probabulity of "unemployment" while retired
@@ -51,13 +51,13 @@ pop_sim_ind_dist = 14000
 # Number of periods to simulate (idiosyncratic shocks model, perpetual youth)
 T_sim_PY = 1200
 # Number of periods to simulate (idiosyncratic shocks model, lifecycle)
-T_sim_LC = 1200
+T_sim_LC = 384
 # Number of periods to simulate (aggregate shocks model)
 T_sim_agg_shocks = 1200
 # Number of periods to throw out when looking at history (perpetual youth)
 ignore_periods_PY = 400
 # Number of periods to throw out when looking at history (lifecycle)
-ignore_periods_LC = 400
+ignore_periods_LC = 0
 T_age = T_cycle + 1  # Don't let simulated agents survive beyond this age
 pLvlInitMean_d = np.log(5)  # average initial permanent income, dropouts
 pLvlInitMean_h = np.log(7.5)  # average initial permanent income, HS grads
@@ -77,7 +77,7 @@ TypeWeight_lifecycle = [d_pct, h_pct, c_pct]
 # Set indiividual parameters for the infinite horizon model
 IndL = 10.0 / 9.0  # Labor supply per individual (constant)
 PermGroFac_i = [1.000**0.25]  # Permanent income growth factor (no perm growth)
-DiscFac_i = 0.97  # Default intertemporal discount factor
+DiscFac_i = 0.99  # Default intertemporal discount factor
 LivPrb_i = [1.0 - 1.0 / 160.0]  # Survival probability
 # Standard deviation of permanent shocks to income
 PermShkStd_i = [(0.01 * 4 / 11) ** 0.5]
@@ -423,6 +423,7 @@ init_dropout = {
     "aXtraExtra": [],
     "aXtraNestFac": aXtraNestFac,
     "LivPrb": LivPrb_d,
+    "PopGroFac": PopGroFac,
     "DiscFac": DiscFac_guess,  # dummy value, will be overwritten
     "AgentCount": 0,  # this is overwritten by parameter distributor
     "T_sim": T_sim_LC,
@@ -466,6 +467,7 @@ init_infinite = {
     "aXtraExtra": [None],
     "aXtraNestFac": aXtraNestFac,
     "LivPrb": LivPrb_i,
+    "PopGroFac": 1.0,
     "DiscFac": DiscFac_i,  # dummy value, will be overwritten
     "cycles": 0,
     "T_cycle": 1,

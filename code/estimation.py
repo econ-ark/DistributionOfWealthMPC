@@ -35,18 +35,21 @@ All of these parameters are set when running this file from one of the do_XXX.py
 files in the root directory.
 """
 
+from code.agents import AggDoWAgent, AggDoWMarket, DoWAgent, DoWMarket
+from code.calibration import SCF_wealth, SCF_weights
 from copy import copy, deepcopy
 from time import time
 
 import numpy as np
+import matplotlib.pyplot as plt  # Plotting tools
+from IPython.core.getipython import get_ipython
+
 from HARK.utilities import get_lorenz_shares
 from scipy.optimize import minimize, minimize_scalar, root_scalar
 
-from code.agents import AggDoWAgent, AggDoWMarket, DoWAgent, DoWMarket
-
 
 def get_ky_ratio_difference(
-    center, economy, param_name, param_count, spread, dist_type
+    center, spread, economy, param_name, param_count, dist_type
 ):
     """
     Finds the difference between simulated and target capital to income ratio in an economy when
@@ -54,16 +57,16 @@ def get_ky_ratio_difference(
 
     Parameters
     ----------
+    center : float
+        A measure of centrality for the distribution of the parameter of interest.
+    spread : float
+        A measure of spread or diffusion for the distribution of the parameter of interest.
     economy : CstwMPCMarket
         An object representing the entire economy, containing the various AgentTypes as an attribute.
     param_name : string
         The name of the parameter of interest that varies across the population.
     param_count : int
         The number of different values the parameter of interest will take on.
-    center : float
-        A measure of centrality for the distribution of the parameter of interest.
-    spread : float
-        A measure of spread or diffusion for the distribution of the parameter of interest.
     dist_type : string
         The type of distribution to be used.  Can be "lognormal" or "uniform" (can expand).
 
@@ -83,7 +86,7 @@ def get_ky_ratio_difference(
 
 
 def find_lorenz_distance_at_target_ky(
-    spread, economy, param_name, param_count, center_range, dist_type
+    spread, economy, param_name, param_count, param_range, dist_type
 ):
     """
     Finds the sum of squared distances between simulated and target Lorenz points in an economy when
@@ -99,7 +102,7 @@ def find_lorenz_distance_at_target_ky(
         The name of the parameter of interest that varies across the population.
     param_count : int
         The number of different values the parameter of interest will take on.
-    center_range : [float,float]
+    param_range : [float,float]
         Bounding values for a measure of centrality for the distribution of the parameter of interest.
     spread : float
         A measure of spread or diffusion for the distribution of the parameter of interest.
@@ -115,11 +118,13 @@ def find_lorenz_distance_at_target_ky(
 
     # use more sophisticated discrete distribution with zero mass point at ends of support
     # root finding
+    print(f"find_lorenz_distance_at_target_KY now trying spread = {spread}...")
+
     optimal_center = root_scalar(
         get_ky_ratio_difference,
-        args=(economy, param_name, param_count, spread, dist_type),
-        method="toms748",
-        bracket=center_range,
+        args=(spread, economy, param_name, param_count, dist_type),
+        method="brenth",
+        bracket=param_range,
         xtol=10 ** (-6),
     ).root
     economy.center_save = optimal_center
@@ -208,6 +213,8 @@ def get_spec_name(options):
         param_text = "beta"
     elif options["param_name"] == "CRRA":
         param_text = "rho"
+    elif options["param_name"] == "Rfree":
+        param_text = "rrate"
     else:
         param_text = options["param_name"]
 
@@ -231,7 +238,18 @@ def get_spec_name(options):
     else:
         shock_text = "Ind"
 
-    spec_name = life_text + param_text + model_text + shock_text + wealth_text
+    if options["dist_type"] == "uniform":
+        dist_text = "Unif"
+    elif options["dist_type"] == "lognormal":
+        dist_text = "Lognrm"
+    elif options["dist_type"] == "logdiff_uniform":
+        dist_text = "Unif_logdiff"
+    else:
+        raise ValueError("Distribution for parameter must be specified.")
+
+    spec_name = (
+        life_text + dist_text + param_text + model_text + shock_text + wealth_text
+    )
 
     return spec_name
 
@@ -315,13 +333,11 @@ def make_agents(options, params, agent_class, param_count):
     # Make AgentTypes for estimation
     if options["do_lifecycle"]:
         dropout_type = agent_class(**params.init_dropout)
-        dropout_type.AgeDstn = calc_stationary_age_dstn(dropout_type.LivPrb, True)
+        dropout_type.AgeDstn = np.array([1.0])
         highschool_type = deepcopy(dropout_type)
         highschool_type.assign_parameters(**params.adj_highschool)
-        highschool_type.AgeDstn = calc_stationary_age_dstn(highschool_type.LivPrb, True)
         college_type = deepcopy(dropout_type)
         college_type.assign_parameters(**params.adj_college)
-        college_type.AgeDstn = calc_stationary_age_dstn(college_type.LivPrb, True)
         dropout_type.update()
         highschool_type.update()
         college_type.update()
@@ -330,6 +346,19 @@ def make_agents(options, params, agent_class, param_count):
             agent_list.append(deepcopy(dropout_type))
             agent_list.append(deepcopy(highschool_type))
             agent_list.append(deepcopy(college_type))
+
+        # New lines for plotting MPC and spending to income ratio by age
+        for this_agent in agent_list:
+            this_agent.track_vars = [
+                "cNrm",
+                "TranShk",
+                "MPC",
+                "t_age",
+                "pLvl",
+                "aLvl",
+                "EmpNow",
+                "WeightFac",
+            ]
     else:
         if options["do_agg_shocks"]:
             perpetualyouth_type = agent_class(**params.init_agg_shocks)
@@ -368,7 +397,7 @@ def set_up_economy(options, params, param_count):
             PopGroFac=params.PopGroFac,
             TypeWeight=params.TypeWeight_lifecycle,
             T_retire=params.working_T - 1,
-            act_T=params.T_sim_LC,
+            act_T=1,
             ignore_periods=params.ignore_periods_LC,
         )
     else:
@@ -384,6 +413,20 @@ def set_up_economy(options, params, param_count):
         economy.update()
         economy.make_AggShkHist()
 
+    # Store cusp values for beta and R for the log difference implementation
+    # using the mortality-modified growth impatience condition
+
+    G = economy.agents[0].PermGroFac[0]
+    rho = economy.agents[0].CRRA
+    PLiv = economy.agents[0].LivPrb[0]
+    R = economy.agents[0].Rfree
+    beta = economy.agents[0].DiscFac
+
+    economy.Rfree_cusp = (G / PLiv) ** rho / (PLiv * beta)
+    economy.DiscFac_cusp = (G / PLiv) ** rho / (
+        PLiv * R
+    )  # See HARK definition of GICRaw... DiscFacEff is computed, but not for Rfree
+
     return economy
 
 
@@ -391,6 +434,9 @@ def estimate(options, params):
     spec_name = get_spec_name(options)
     param_count = get_param_count(options)
     economy = set_up_economy(options, params, param_count)
+
+    economy.spec_name = spec_name
+    economy.param_count = param_count
 
     # Estimate the model as requested
     if options["run_estimation"]:
@@ -401,20 +447,40 @@ def estimate(options, params):
             param_range = [0.2, 70.0]
             spread_range = [0.00001, 1.0]
         elif options["param_name"] == "DiscFac":
-            param_range = [0.95, 0.995]
-            spread_range = [0.006, 0.008]
+            if options["do_lifecycle"]:
+                param_range = [0.90, 0.995]
+                spread_range = [0.006, 0.015]
+            else:
+                param_range = [0.95, 0.995]  # search space for center_estimate
+                spread_range = [0.006, 0.008]  # search space for spread_estimate
+            init_guess = [0.9867, 0.0067]
+        elif options["param_name"] == "Rfree":
+            if options["do_lifecycle"]:
+                param_range = [0.9, 1.02]  # change later for life-cycle model
+                spread_range = [0.001, 0.005]
+            else:
+                param_range = [1.0, 1.02]  # search space for center_estimate
+                spread_range = [0.001, 0.005]  # search space for spread_estimate
+
+            init_guess = [1.01, 0.01]  # for combo
         else:
             print(f"Parameter range for {options['param_name']} has not been defined!")
 
+        # Special bounding region for the log difference implementation
+        if options["dist_type"] == "logdiff_uniform":
+            param_range = [
+                -7,
+                -1,
+            ]  # overwrites the param range set before, but leaves the spread range unaffected
+
         if options["do_param_dist"]:
             # Run the param-dist estimation
-
             if options["do_combo_estimation"]:
                 t_start = time()
 
                 results = minimize(
                     get_target_ky_and_find_lorenz_distance,
-                    [0.9867, 0.0067],
+                    init_guess,
                     args=(
                         economy,
                         options["param_name"],
@@ -433,7 +499,7 @@ def estimate(options, params):
                 spread_estimate = (
                     minimize_scalar(
                         find_lorenz_distance_at_target_ky,
-                        bounds=spread_range,
+                        bracket=spread_range,
                         args=(
                             economy,
                             options["param_name"],
@@ -454,13 +520,13 @@ def estimate(options, params):
             center_estimate = root_scalar(
                 get_ky_ratio_difference,
                 args=(
+                    0.0,
                     economy,
                     options["param_name"],
                     param_count,
-                    0.0,
                     options["dist_type"],
                 ),
-                method="toms748",
+                method="brenth",
                 bracket=param_range,
                 xtol=1e-6,
             ).root
@@ -479,17 +545,115 @@ def estimate(options, params):
         )
         economy.solve()
         economy.calc_lorenz_distance()
-        print(
-            f"Estimate is center={center_estimate}, spread={spread_estimate}, "
-            f"took {t_end - t_start} seconds."
-        )
 
-        economy.center_estimate = center_estimate
-        economy.spread_estimate = spread_estimate
+        if options["dist_type"] == "logdiff_uniform":
+            if options["param_name"] == "DiscFac":
+                print(
+                    f"Estimate is center={(economy.DiscFac_cusp - np.exp(center_estimate) - spread_estimate)}, spread={spread_estimate}, "
+                    f"took {t_end - t_start} seconds."
+                )
+            elif options["param_name"] == "Rfree":
+                print(
+                    f"Estimate is center={(economy.Rfree_cusp - np.exp(center_estimate) - spread_estimate)}, spread={spread_estimate}, "
+                    f"took {t_end - t_start} seconds."
+                )
+        else:
+            print(
+                f"Estimate is center={center_estimate}, spread={spread_estimate}, "
+                f"took {t_end - t_start} seconds."
+            )
+
+        if options["dist_type"] == "logdiff_uniform":
+            if options["param_name"] == "DiscFac":
+                economy.center_estimate = (
+                    economy.DiscFac_cusp - np.exp(center_estimate) - spread_estimate
+                )
+            elif options["param_name"] == "Rfree":
+                economy.center_estimate = (
+                    economy.Rfree_cusp - np.exp(center_estimate) - spread_estimate
+                )
+
+            economy.spread_estimate = spread_estimate
+        else:
+            economy.center_estimate = center_estimate
+            economy.spread_estimate = spread_estimate
+
         economy.show_many_stats(spec_name)
         print(f"These results have been saved to ./code/results/{spec_name}.txt\n\n")
 
     return economy
+
+
+def plot_lorenz_dist(options, economy):
+    """
+    A final method to be ran after "estimation" which produces a graph of the key
+    results of the structural estimation; this will capture how well the estimated
+    parameters can be used to match the wealth targets from the data.
+    """
+
+    # Everything below this line is to produce the final plot showing key results
+    # Store attributes for legend of the plot
+    if options["param_name"] == "DiscFac":
+        economy.param = "beta"
+    elif options["param_name"] == "CRRA":
+        economy.param = "rho"
+    elif options["param_name"] == "Rfree":
+        economy.param = "R"
+    else:
+        economy.param = options["param_name"]
+
+    if options["do_param_dist"]:
+        economy.model = "Dist"
+    else:
+        economy.model = "Point"
+
+    # Construct the Lorenz curves from the data
+    pctiles = np.linspace(0.001, 0.999, 15)  # may need to change percentiles
+    SCF_Lorenz_points = get_lorenz_shares(
+        SCF_wealth, weights=SCF_weights, percentiles=pctiles
+    )
+
+    # Construct the Lorenz curves from the simulated model
+    if options["do_lifecycle"]:
+        sim_wealth = np.concatenate(economy.reap_state["aLvl"])
+        sim_weight = np.concatenate(economy.reap_state["WeightFac"])
+        order = np.argsort(sim_wealth)
+        sim_wealth = sim_wealth[order]
+        sim_weight = sim_weight[order]
+        sim_Lorenz_points = get_lorenz_shares(
+            sim_wealth, weights=sim_weight, percentiles=pctiles
+        )
+    else:
+        sim_wealth = np.concatenate(economy.reap_state["aLvl"])
+        sim_Lorenz_points = get_lorenz_shares(sim_wealth, percentiles=pctiles)
+
+    # Plot
+    plt.figure(figsize=(5, 5))
+    plt.title("Wealth Distribution")
+    plt.plot(pctiles, SCF_Lorenz_points, "-k", label="SCF")
+    plt.plot(
+        pctiles, sim_Lorenz_points, "-.k", label=f"{economy.param}-{economy.model}"
+    )
+    plt.plot(pctiles, pctiles, "--k", label="45 Degree")
+    plt.xlabel("Percentile of net worth")
+    plt.ylabel("Cumulative share of wealth")
+    plt.legend(loc=2)
+    plt.ylim([0, 1])
+    # Save the plot to the specified file path
+    if economy.spec_name is not None:
+        file_path = economy.my_file_path + "/figures/" + economy.spec_name + "Plot.png"
+    plt.savefig(
+        file_path, format="png", dpi=300
+    )  # You can adjust the format and dpi as needed
+
+    # Display plot; if running from command line, set interactive mode on, and make figure without blocking execution
+    if str(type(get_ipython())) == "<class 'ipykernel.zmqshell.ZMQInteractiveShell'>":
+        plt.show()
+    else:
+        plt.ioff()
+        plt.show(block=False)
+        # Give OS time to make the plot (it only draws when main thread is sleeping)
+        plt.pause(2)
 
 
 class Estimator:
