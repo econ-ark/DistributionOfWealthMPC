@@ -467,7 +467,7 @@ init_infinite = {
     "aXtraExtra": [None],
     "aXtraNestFac": aXtraNestFac,
     "LivPrb": LivPrb_i,
-    "PopGroFac" : 1.0,
+    "PopGroFac": 1.0,
     "DiscFac": DiscFac_i,  # dummy value, will be overwritten
     "cycles": 0,
     "T_cycle": 1,

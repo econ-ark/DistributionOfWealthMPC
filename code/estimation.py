@@ -36,7 +36,7 @@ files in the root directory.
 """
 
 from code.agents import AggDoWAgent, AggDoWMarket, DoWAgent, DoWMarket
-from code.calibration import init_infinite, SCF_wealth, SCF_weights
+from code.calibration import SCF_wealth, SCF_weights
 from copy import copy, deepcopy
 from time import time
 
@@ -247,7 +247,9 @@ def get_spec_name(options):
     else:
         raise ValueError("Distribution for parameter must be specified.")
 
-    spec_name = life_text + dist_text + param_text + model_text + shock_text + wealth_text
+    spec_name = (
+        life_text + dist_text + param_text + model_text + shock_text + wealth_text
+    )
 
     return spec_name
 
@@ -331,7 +333,7 @@ def make_agents(options, params, agent_class, param_count):
     # Make AgentTypes for estimation
     if options["do_lifecycle"]:
         dropout_type = agent_class(**params.init_dropout)
-        dropout_type.AgeDstn = np.array([1.])
+        dropout_type.AgeDstn = np.array([1.0])
         highschool_type = deepcopy(dropout_type)
         highschool_type.assign_parameters(**params.adj_highschool)
         college_type = deepcopy(dropout_type)
@@ -344,10 +346,19 @@ def make_agents(options, params, agent_class, param_count):
             agent_list.append(deepcopy(dropout_type))
             agent_list.append(deepcopy(highschool_type))
             agent_list.append(deepcopy(college_type))
-        
+
         # New lines for plotting MPC and spending to income ratio by age
         for this_agent in agent_list:
-            this_agent.track_vars = ["cNrm", "TranShk", "MPC", "t_age", "pLvl", "aLvl", "EmpNow", "WeightFac"]
+            this_agent.track_vars = [
+                "cNrm",
+                "TranShk",
+                "MPC",
+                "t_age",
+                "pLvl",
+                "aLvl",
+                "EmpNow",
+                "WeightFac",
+            ]
     else:
         if options["do_agg_shocks"]:
             perpetualyouth_type = agent_class(**params.init_agg_shocks)
@@ -404,15 +415,17 @@ def set_up_economy(options, params, param_count):
 
     # Store cusp values for beta and R for the log difference implementation
     # using the mortality-modified growth impatience condition
-    
+
     G = economy.agents[0].PermGroFac[0]
     rho = economy.agents[0].CRRA
     PLiv = economy.agents[0].LivPrb[0]
     R = economy.agents[0].Rfree
     beta = economy.agents[0].DiscFac
 
-    economy.Rfree_cusp = (G / PLiv)**rho / (PLiv * beta)
-    economy.DiscFac_cusp = (G/ PLiv)**rho / (PLiv * R) # See HARK definition of GICRaw... DiscFacEff is computed, but not for Rfree
+    economy.Rfree_cusp = (G / PLiv) ** rho / (PLiv * beta)
+    economy.DiscFac_cusp = (G / PLiv) ** rho / (
+        PLiv * R
+    )  # See HARK definition of GICRaw... DiscFacEff is computed, but not for Rfree
 
     return economy
 
@@ -434,28 +447,31 @@ def estimate(options, params):
             param_range = [0.2, 70.0]
             spread_range = [0.00001, 1.0]
         elif options["param_name"] == "DiscFac":
-            if options['do_lifecycle']:
+            if options["do_lifecycle"]:
                 param_range = [0.90, 0.995]
                 spread_range = [0.006, 0.015]
             else:
-                param_range = [0.95, 0.995]   # search space for center_estimate
+                param_range = [0.95, 0.995]  # search space for center_estimate
                 spread_range = [0.006, 0.008]  # search space for spread_estimate
             init_guess = [0.9867, 0.0067]
         elif options["param_name"] == "Rfree":
-            if options['do_lifecycle']:
-                param_range = [0.9, 1.02]      # change later for life-cycle model 
+            if options["do_lifecycle"]:
+                param_range = [0.9, 1.02]  # change later for life-cycle model
                 spread_range = [0.001, 0.005]
             else:
                 param_range = [1.0, 1.02]  # search space for center_estimate
                 spread_range = [0.001, 0.005]  # search space for spread_estimate
-            
+
             init_guess = [1.01, 0.01]  # for combo
         else:
             print(f"Parameter range for {options['param_name']} has not been defined!")
 
         # Special bounding region for the log difference implementation
         if options["dist_type"] == "logdiff_uniform":
-            param_range = [-7,-1] #overwrites the param range set before, but leaves the spread range unaffected
+            param_range = [
+                -7,
+                -1,
+            ]  # overwrites the param range set before, but leaves the spread range unaffected
 
         if options["do_param_dist"]:
             # Run the param-dist estimation
@@ -549,12 +565,16 @@ def estimate(options, params):
 
         if options["dist_type"] == "logdiff_uniform":
             if options["param_name"] == "DiscFac":
-                economy.center_estimate = economy.DiscFac_cusp - np.exp(center_estimate) - spread_estimate
+                economy.center_estimate = (
+                    economy.DiscFac_cusp - np.exp(center_estimate) - spread_estimate
+                )
             elif options["param_name"] == "Rfree":
-                economy.center_estimate = economy.Rfree_cusp - np.exp(center_estimate) - spread_estimate
+                economy.center_estimate = (
+                    economy.Rfree_cusp - np.exp(center_estimate) - spread_estimate
+                )
 
             economy.spread_estimate = spread_estimate
-        else: 
+        else:
             economy.center_estimate = center_estimate
             economy.spread_estimate = spread_estimate
 
@@ -563,10 +583,11 @@ def estimate(options, params):
 
     return economy
 
+
 def plot_lorenz_dist(options, economy):
     """
-    A final method to be ran after "estimation" which produces a graph of the key 
-    results of the structural estimation; this will capture how well the estimated 
+    A final method to be ran after "estimation" which produces a graph of the key
+    results of the structural estimation; this will capture how well the estimated
     parameters can be used to match the wealth targets from the data.
     """
 
@@ -587,28 +608,32 @@ def plot_lorenz_dist(options, economy):
         economy.model = "Point"
 
     # Construct the Lorenz curves from the data
-    pctiles = np.linspace(0.001, 0.999, 15) # may need to change percentiles
+    pctiles = np.linspace(0.001, 0.999, 15)  # may need to change percentiles
     SCF_Lorenz_points = get_lorenz_shares(
-    SCF_wealth, weights=SCF_weights, percentiles=pctiles
+        SCF_wealth, weights=SCF_weights, percentiles=pctiles
     )
 
     # Construct the Lorenz curves from the simulated model
     if options["do_lifecycle"]:
-        sim_wealth = np.concatenate(economy.reap_state['aLvl'])
-        sim_weight = np.concatenate(economy.reap_state['WeightFac'])
+        sim_wealth = np.concatenate(economy.reap_state["aLvl"])
+        sim_weight = np.concatenate(economy.reap_state["WeightFac"])
         order = np.argsort(sim_wealth)
         sim_wealth = sim_wealth[order]
         sim_weight = sim_weight[order]
-        sim_Lorenz_points = get_lorenz_shares(sim_wealth, weights=sim_weight, percentiles=pctiles)
+        sim_Lorenz_points = get_lorenz_shares(
+            sim_wealth, weights=sim_weight, percentiles=pctiles
+        )
     else:
         sim_wealth = np.concatenate(economy.reap_state["aLvl"])
         sim_Lorenz_points = get_lorenz_shares(sim_wealth, percentiles=pctiles)
-    
+
     # Plot
     plt.figure(figsize=(5, 5))
     plt.title("Wealth Distribution")
     plt.plot(pctiles, SCF_Lorenz_points, "-k", label="SCF")
-    plt.plot(pctiles, sim_Lorenz_points, "-.k", label=f"{economy.param}-{economy.model}")
+    plt.plot(
+        pctiles, sim_Lorenz_points, "-.k", label=f"{economy.param}-{economy.model}"
+    )
     plt.plot(pctiles, pctiles, "--k", label="45 Degree")
     plt.xlabel("Percentile of net worth")
     plt.ylabel("Cumulative share of wealth")
@@ -617,19 +642,19 @@ def plot_lorenz_dist(options, economy):
     # Save the plot to the specified file path
     if economy.spec_name is not None:
         file_path = economy.my_file_path + "/figures/" + economy.spec_name + "Plot.png"
-    plt.savefig(file_path, format="png", dpi=300)  # You can adjust the format and dpi as needed
+    plt.savefig(
+        file_path, format="png", dpi=300
+    )  # You can adjust the format and dpi as needed
 
-    #Display plot; if running from command line, set interactive mode on, and make figure without blocking execution
-    if (
-        str(type(get_ipython()))
-        == "<class 'ipykernel.zmqshell.ZMQInteractiveShell'>"
-    ):
+    # Display plot; if running from command line, set interactive mode on, and make figure without blocking execution
+    if str(type(get_ipython())) == "<class 'ipykernel.zmqshell.ZMQInteractiveShell'>":
         plt.show()
     else:
         plt.ioff()
         plt.show(block=False)
         # Give OS time to make the plot (it only draws when main thread is sleeping)
         plt.pause(2)
+
 
 class Estimator:
     def __init__(self, options, parameters):

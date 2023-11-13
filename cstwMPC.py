@@ -25,13 +25,13 @@
 # This cell does some standard python setup!
 
 import os, sys
+
 sys.path.append(os.getcwd())
-sys.path.append(os.getcwd() + '\code')
+sys.path.append(os.getcwd() + "\code")
 import calibration as parameters
 import warnings  # The warnings package allows us to ignore some harmless but alarming warning messages
 from calibration import SCF_wealth, SCF_weights
 from estimation import estimate
-from estimation import get_ky_ratio_difference
 
 # Import related generic python packages
 import matplotlib.pyplot as plt  # Plotting tools
@@ -186,7 +186,7 @@ options = {
     "do_lifecycle": do_lifecycle,
     "do_agg_shocks": do_agg_shocks,
     "do_liquid": do_liquid,
-    "do_combo_estimation" : False
+    "do_combo_estimation": False,
 }
 
 

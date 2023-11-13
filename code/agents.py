@@ -1,5 +1,4 @@
 import os
-from copy import copy
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -9,7 +8,7 @@ from HARK.ConsumptionSaving.ConsAggShockModel import (
     CobbDouglasEconomy,
 )
 from HARK.ConsumptionSaving.ConsIndShockModel import IndShockConsumerType
-from HARK.distribution import DiscreteDistribution, Lognormal, Uniform
+from HARK.distribution import Lognormal, Uniform
 from HARK.utilities import calc_subpop_avg, get_lorenz_shares, get_percentiles
 
 from IPython.core.getipython import get_ipython
@@ -30,15 +29,15 @@ class CstwMPCAgent(AgentType):
     """
 
     def reset(self):
-        '''
+        """
         When this type is reset, all of its simulated states are set to None, so
         that they're properly re-initialized by initialize_sim
-        '''
+        """
         # Clear simulated states and initialize the simulation
         for var in self.state_vars:
             self.state_now[var] = None
         self.initialize_sim()
-        
+
         # If this is the aggregate shocks model, give everyone steady state assets
         if hasattr(self, "kGrid"):
             # Start simulation near SS
@@ -46,7 +45,7 @@ class CstwMPCAgent(AgentType):
             self.aNrmNow = self.aLvlNow / self.pLvlNow
 
     def market_action(self):
-        '''
+        """
         When the market calls on an agent type to take its market action, code
         behavior depends on whether this is a lifecycle or infinite horizon model.
         If it's infinite horizon, one period is simulated, and the results are
@@ -54,39 +53,39 @@ class CstwMPCAgent(AgentType):
         lifecycle is simulated from age 0 to 384; the histories are flattened
         into 1D arrays and put back into state_now to be collected by reap().
         This approach vastly accelerates the simulation of the lifecycle model.
-        '''
+        """
         # In the aggregate shocks version, keep mean pLvl at unity
         if hasattr(self, "kGrid"):
             self.pLvl = self.pLvlNow / np.mean(self.pLvlNow)
-        
+
         if self.cycles == 0:
             # Simulate one period if infinite horizon
             self.simulate(1)
         else:
             # Simulate *all* of the periods if lifecycle!
-            self.simulate(self.T_cycle) 
-            
+            self.simulate(self.T_cycle)
+
             # Reshape the history of simulated values and put it into state_now
             for var in self.track_vars:
                 self.state_now[var] = self.history[var].flatten()
-            
+
             # The reap code expects some variables to not be in state_now
-            self.MPCnow = self.state_now['MPC']
-            self.EmpNow = self.state_now['EmpNow']
-            self.t_age = self.state_now['t_age']
-            
-            
+            self.MPCnow = self.state_now["MPC"]
+            self.EmpNow = self.state_now["EmpNow"]
+            self.t_age = self.state_now["t_age"]
+
+
 class DoWAgent(CstwMPCAgent, IndShockConsumerType):
     def sim_one_period(self):
-        '''
+        """
         Overwrite the core simulation routine with a simplified special one, but
         only use it for lifecycle models.
-        '''
-        if self.cycles == 0: # Use core simulation method if infinite horizon
+        """
+        if self.cycles == 0:  # Use core simulation method if infinite horizon
             IndShockConsumerType.sim_one_period(self)
-            self.state_now["WeightFac"] = self.PopGroFac**(-self.t_age)
+            self.state_now["WeightFac"] = self.PopGroFac ** (-self.t_age)
             return
-        
+
         # If lifecycle, first deal with moving from last period's values to this period
         for var in self.state_now:
             self.state_prev[var] = self.state_now[var]
@@ -96,39 +95,39 @@ class DoWAgent(CstwMPCAgent, IndShockConsumerType):
             else:
                 # Probably an aggregate variable. It may be getting set by the Market.
                 pass
-        
+
         # First, get the age of all agents-- which is the same across all of them!
         t = self.t_cycle[0]
         N = self.AgentCount
-        
+
         # Now, generate income shocks for all of the agents
-        IncShkDstn = self.IncShkDstn[t-1]
+        IncShkDstn = self.IncShkDstn[t - 1]
         IncShkNow = IncShkDstn.draw(N)
-        PermShkNow = IncShkNow[0,:]
-        TranShkNow = IncShkNow[1,:]
-        PermGroFac = self.PermGroFac[t-1]
+        PermShkNow = IncShkNow[0, :]
+        TranShkNow = IncShkNow[1, :]
+        PermGroFac = self.PermGroFac[t - 1]
         RfreeEff = self.Rfree / (PermGroFac * PermShkNow)
-        pLvlNow = PermGroFac * PermShkNow * self.state_prev['pLvl']
-        
+        pLvlNow = PermGroFac * PermShkNow * self.state_prev["pLvl"]
+
         # Move from aNrmPrev to mNrmNow using our income shock draws
-        aNrmPrev = self.state_prev['aNrm']
+        aNrmPrev = self.state_prev["aNrm"]
         bNrmNow = RfreeEff * aNrmPrev
         mNrmNow = bNrmNow + TranShkNow
-        
+
         # Find consumption and the MPC for all agents
         cFuncNow = self.solution[t].cFunc
         cNrmNow, MPCnow = cFuncNow.eval_with_derivative(mNrmNow)
-        
+
         # Calculate end-of-period assets in both level and normalized
         aNrmNow = mNrmNow - cNrmNow
         aLvlNow = aNrmNow * pLvlNow
-        
+
         # Compute cumulative survival probability to this age
-        LivPrb = np.concatenate([[1.], self.LivPrb])
-        CumLivPrb = np.prod(LivPrb[:(t+1)])
-        CohortWeight = self.PopGroFac**(-t)
+        LivPrb = np.concatenate([[1.0], self.LivPrb])
+        CumLivPrb = np.prod(LivPrb[: (t + 1)])
+        CohortWeight = self.PopGroFac ** (-t)
         WeightFac = CumLivPrb * CohortWeight
-        
+
         # Write these results to state_now
         self.state_now["mNrm"] = mNrmNow
         self.state_now["bNrm"] = bNrmNow
@@ -140,8 +139,8 @@ class DoWAgent(CstwMPCAgent, IndShockConsumerType):
         self.state_now["MPC"] = MPCnow
         self.state_now["WeightFac"] = WeightFac * np.ones(self.AgentCount)
         self.EmpNow = np.logical_not(TranShkNow == self.IncUnemp)
-        self.state_now['t_age'] = self.t_age.astype(float)
-        
+        self.state_now["t_age"] = self.t_age.astype(float)
+
         # Advance time for all agents
         self.t_age += 1  # Age all consumers by one period
         self.t_cycle += 1  # Age all consumers within their cycle
@@ -163,7 +162,15 @@ class CstwMPCMarket(Market):  # EstimationMarketClass
         Make a new instance of CstwMPCMarket.
         """
 
-        reap_vars = ["aLvl", "pLvl", "MPCnow", "TranShk", "EmpNow", "WeightFac", "t_age"]
+        reap_vars = [
+            "aLvl",
+            "pLvl",
+            "MPCnow",
+            "TranShk",
+            "EmpNow",
+            "WeightFac",
+            "t_age",
+        ]
         # Nothing needs to be sent back to agents in the idiosyncratic shocks version
         sow_vars = []
         const_vars = []  # ['LorenzBool','ManyStatsBool']
@@ -483,7 +490,6 @@ class CstwMPCMarket(Market):  # EstimationMarketClass
                 top = self.DiscFac_cusp - np.exp(center)
                 bot = top - 2 * spread
                 param_dist = Uniform(bot=bot, top=top).discretize(N=param_count)
-        
 
         # Distribute the parameters to the various types, assigning consecutive types the same
         # value if there are more types than values
@@ -498,7 +504,7 @@ class CstwMPCMarket(Market):  # EstimationMarketClass
                         self.Population * param_dist.pmv[b] * self.TypeWeight[n]
                     )
                 )
-                #print(param_dist.atoms[0, b])
+                # print(param_dist.atoms[0, b])
                 self.agents[j].assign_parameters(**{param_name: param_dist.atoms[0, b]})
                 j += 1
             b += 1
