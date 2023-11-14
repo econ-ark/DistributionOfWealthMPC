@@ -1,15 +1,12 @@
 cff-version: 1.2.0
-message: The results of this paper are now generated in an updated repository using a more modern version of HARK, https://github.com/econ-ark/DistributionOfWealthMPC. Any followup work should build on the updated code in that repository. # optional
+message: The results of this paper are now generated in an updated repository using a more modern version of HARK, https://github.com/econ-ark/DistributionOfWealthMPC. Any followup work should build on the updated code in that repository.
 authors:
+  - family-names: "Benthall"
+    given-names: "Sebastian"
+    orcid: https://orcid.org/0000-0002-1789-5109
   - family-names: "Carroll"
-    given-names: "Christopher D."
+    given-names: "Christopher"
     orcid: "https://orcid.org/0000-0003-3732-9312"
-  - family-names: "Slacalek"
-    given-names: "Jiri"
-  - family-names: "Kiichi"
-    given-names: "Tokuoka"
-  - family-names: "White"
-    given-names: "Matthew"
 title: "The distribution of wealth and the marginal propensity to consume"
 
 references:
@@ -24,7 +21,7 @@ references:
         given-names: "Tokuoka"
       - family-names: "White"
         given-names: "Matthew N."
-    title: "The distribution of wealth and the marginal propensity to consume" # required
+    title: "The distribution of wealth and the marginal propensity to consume"
     doi: "10.3982/QE694"
     date-released: 2017-11-20
     publisher:
