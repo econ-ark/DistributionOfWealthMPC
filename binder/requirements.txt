@@ -1,3 +1,0 @@
-econ-ark>=0.13.0
-matplotlib>=3.7.0
-ipython>=8.8.0
